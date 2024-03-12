@@ -15,21 +15,21 @@ class EarlyRewardLoss(nn.Module):
         # equation 3
         Pt = calculate_probability_making_decision(probability_stopping)
 
-        # equation 7 additive smoothing
+        # equation 8 additive smoothing
         Pt = Pt + self.epsilon / T
 
-        # equation 6, right term
+        # equation 4, right term
         t = torch.ones(N, T, device=log_class_probabilities.device) * \
                   torch.arange(T).type(torch.FloatTensor).to(log_class_probabilities.device)
 
         earliness_reward = Pt * probability_correct_class(log_class_probabilities, y_true) * (1 - t / T)
         earliness_reward = earliness_reward.sum(1).mean(0)
 
-        # equation 6 left term
+        # equation 4 left term
         cross_entropy = self.negative_log_likelihood(log_class_probabilities.view(N*T,C), y_true.view(N*T)).view(N,T)
         classification_loss = (cross_entropy * Pt).sum(1).mean(0)
 
-        # equation 6
+        # equation 4
         loss = self.alpha * classification_loss - (1-self.alpha) * earliness_reward
 
         if return_stats:

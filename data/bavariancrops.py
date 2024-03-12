@@ -12,7 +12,7 @@ CLASSES = ["meadow", "summer barley", "corn", "winter wheat", "winter barley", "
 
 class BavarianCrops(Dataset):
 
-    def __init__(self, partition, root=os.environ["HOME"], sequencelength=70, return_ids = False):
+    def __init__(self, partition, root=os.environ.get("HOME", os.environ.get("USERPROFILE")), sequencelength=70, return_ids = False):
         assert partition in ["train", "valid", "eval"]
         if not os.path.exists(os.path.join(root,"holl")):
             print(f"no dataset found in {root}/holl. downloading...")
@@ -28,6 +28,7 @@ class BavarianCrops(Dataset):
         self.ids = np.load(os.path.join(npy_folder, "ids.npy"), allow_pickle=True)
         self.X = np.load(os.path.join(npy_folder, "X.npy"), allow_pickle=True)
         self.return_ids = return_ids
+        self.classes = CLASSES
 
         self.sequencelength=sequencelength
 

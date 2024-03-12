@@ -1,3 +1,6 @@
+import sys
+import os 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
 from torch.utils.data import DataLoader
 from earlyrnn import EarlyRNN
@@ -10,6 +13,8 @@ import sklearn.metrics
 import pandas as pd
 import argparse
 import os
+import wandb
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Run ELECTS Early Classification training on the BavarianCrops dataset.')
@@ -53,6 +58,7 @@ def main(args):
         class_weights = None
         train_ds = BavarianCrops(root=dataroot,partition="train", sequencelength=args.sequencelength)
         test_ds = BavarianCrops(root=dataroot,partition="valid", sequencelength=args.sequencelength)
+        class_names = test_ds.classes
     elif args.dataset == "unitedstates":
         args.dataroot = "/data/modiscdl/"
         args.sequencelength = 24
@@ -67,6 +73,7 @@ def main(args):
         input_dim = 13
         train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=args.sequencelength)
         test_ds = BreizhCrops(root=dataroot,partition="valid", sequencelength=args.sequencelength)
+        class_names = test_ds.ds.classes
     elif args.dataset in ["ghana"]:
         use_s2_only = False
         average_pixel = False
@@ -89,6 +96,7 @@ def main(args):
         test_ds = SustainbenchCrops(root=dataroot,partition="test", sequencelength=args.sequencelength,
                                     country="ghana", use_s2_only=use_s2_only, average_pixel=average_pixel,
                                     max_n_pixels=max_n_pixels)
+        class_names = test_ds.classes
     elif args.dataset in ["southsudan"]:
         use_s2_only = False
         dataroot = args.dataroot
@@ -102,6 +110,7 @@ def main(args):
         train_ds = torch.utils.data.ConcatDataset([train_ds, val_ds])
         test_ds = SustainbenchCrops(root=dataroot, partition="val", sequencelength=args.sequencelength,
                                    country="southsudan", use_s2_only=use_s2_only)
+        class_names = test_ds.classes
 
     else:
         raise ValueError(f"dataset {args.dataset} not recognized")
@@ -184,6 +193,22 @@ def main(args):
                 )
             )
 
+            wandb.log({
+                "trainloss": trainloss,
+                "testloss": testloss,
+                "accuracy": accuracy,
+                "precision": precision,
+                "recall": recall,
+                "fscore": fscore,
+                "kappa": kappa,
+                "earliness": earliness,
+                "classification_loss": classification_loss,
+                "earliness_reward": earliness_reward,
+                "confusion_matrix": wandb.plot.confusion_matrix(probs=None, y_true=stats["targets"][:, 0],
+                                                               preds=stats["predictions_at_t_stop"][:, 0],
+                                                               class_names=class_names),
+            })
+
             visdom_logger(stats)
             visdom_logger.plot_boxplot(stats["targets"][:, 0], stats["t_stop"][:, 0], tmin=0, tmax=args.sequencelength)
             df = pd.DataFrame(train_stats).set_index("epoch")
@@ -216,11 +241,17 @@ def main(args):
             pbar.set_description(f"epoch {epoch}: trainloss {trainloss:.2f}, testloss {testloss:.2f}, "
                      f"accuracy {accuracy:.2f}, earliness {earliness:.2f}. "
                      f"classification loss {classification_loss:.2f}, earliness reward {earliness_reward:.2f}. {savemsg}")
+            
+            wandb.log_artifact(args.snapshot, type="model")        
 
             if args.patience is not None:
                 if not_improved > args.patience:
                     print(f"stopping training. testloss {testloss:.2f} did not improve in {args.patience} epochs.")
                     break
+        
+    # save model to wandb
+    model.to_onnx()
+    wandb.save("model.onnx")
 
 def train_epoch(model, dataloader, optimizer, criterion, device):
     losses = []
@@ -272,4 +303,28 @@ def test_epoch(model, dataloader, criterion, device):
 
 if __name__ == '__main__':
     args = parse_args()
+    # start a new wandb run to track this script
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="ELECTS",
+        notes="first experimentations with ELECTS",
+        tags=["ELECTS", "bavariancrops"],
+        # track hyperparameters and run metadata
+        config={
+        "dataset": args.dataset,
+        "alpha": args.alpha,
+        "epsilon": args.epsilon,
+        "learning_rate": args.learning_rate,
+        "weight_decay": args.weight_decay,
+        "patience": args.patience,
+        "device": args.device,
+        "epochs": args.epochs,
+        "sequencelength": args.sequencelength,
+        "batchsize": args.batchsize,
+        "architecture": "EarlyRNN",
+        "optimizer": "AdamW",
+        "criterion": "EarlyRewardLoss",
+        }
+    )
     main(args)
+    wandb.finish()

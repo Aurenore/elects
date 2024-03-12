@@ -12,3 +12,4 @@ breizhcrops
 netCDF4
 visdom
 torchvision
+wandb
