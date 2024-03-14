@@ -1,8 +1,8 @@
-ARG ROOT_CONTAINER=jjurm/runai-job
+ARG ROOT_CONTAINER=aurenore/runai-job
 FROM $ROOT_CONTAINER
 
 USER root
-ENV HOME=/workdir
+ENV HOME=/workspace
 RUN mkdir -p "$HOME" && \
     chown -R "$NB_UID:$NB_GID" "$HOME"
 WORKDIR "$HOME"
@@ -22,8 +22,9 @@ RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python && \
 
 USER $NB_USER
 
-COPY requirements.txt /tmp/requirements-freeze-v1.txt
-RUN pip install --timeout 3600 -r /tmp/requirements-freeze-v1.txt
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --timeout 3600 -r /tmp/requirements.txt
+
 
 # add visual code extension
 

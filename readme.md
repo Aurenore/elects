@@ -81,3 +81,12 @@ python train.py --dataroot /data/sustainbench --dataset ghana
 python train.py --dataroot /data/sustainbench --dataset southsudan
 
 --dataroot /data/sustainbench --dataset southsudan --epochs 500
+
+# launch jobs on runai
+```
+runai submit <JOBNAME> \
+--image aurenore/runai-job \
+--gpu 1 \
+--git-sync source=REPO,branch=BRANCH_NAME,rev=REVISION,username=USER,password=PASSWORD,target=TARGET_DIRECTORY_TO_CLONE \
+-- [COMMAND]
+```
