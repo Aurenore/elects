@@ -8,12 +8,13 @@ import torch
 from tqdm import tqdm
 from loss import EarlyRewardLoss
 import numpy as np
-from utils import VisdomLogger
 import sklearn.metrics
 import pandas as pd
 import argparse
 import os
 import wandb
+from utils.plots import plot_label_distribution_datasets, plot_boxplot
+import matplotlib.pyplot as plt
 
 
 def parse_args():
@@ -50,6 +51,7 @@ def parse_args():
     return args
 
 def main(args):
+    # ----------------------------- LOAD DATASET -----------------------------
 
     if args.dataset == "bavariancrops":
         dataroot = os.path.join(args.dataroot,"bavariancrops")
@@ -114,14 +116,21 @@ def main(args):
 
     else:
         raise ValueError(f"dataset {args.dataset} not recognized")
-
+    
     traindataloader = DataLoader(
         train_ds,
         batch_size=args.batchsize)
     testdataloader = DataLoader(
         test_ds,
         batch_size=args.batchsize)
-
+    # ----------------------------- VISUALIZATION: label distribution -----------------------------
+    datasets = [train_ds, test_ds]
+    sets_labels = ["Train", "Validation"]
+    fig, ax = plt.subplots(figsize=(15, 7))
+    fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
+    wandb.log({"label_distribution": wandb.Image(fig)})
+        
+    # ----------------------------- SET UP MODEL -----------------------------
     model = EarlyRNN(nclasses=nclasses, input_dim=input_dim).to(args.device)
 
 
@@ -153,9 +162,11 @@ def main(args):
     else:
         train_stats = []
         start_epoch = 1
-    visdom_logger = VisdomLogger()
 
     not_improved = 0
+    print("starting training...")
+
+    # ----------------------------- TRAINING -----------------------------
     with tqdm(range(start_epoch, args.epochs + 1)) as pbar:
         for epoch in pbar:
             trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=args.device)
@@ -174,8 +185,8 @@ def main(args):
             earliness_reward = stats["earliness_reward"].mean()
             earliness = 1 - (stats["t_stop"].mean() / (args.sequencelength - 1))
 
-            stats["confusion_matrix"] = sklearn.metrics.confusion_matrix(y_pred=stats["predictions_at_t_stop"][:, 0],
-                                                                         y_true=stats["targets"][:, 0])
+            #stats["confusion_matrix"] = sklearn.metrics.confusion_matrix(y_pred=stats["predictions_at_t_stop"][:, 0],
+                                                                   #      y_true=stats["targets"][:, 0])
 
             train_stats.append(
                 dict(
@@ -192,10 +203,11 @@ def main(args):
                     earliness_reward=earliness_reward
                 )
             )
+            fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
+            fig_boxplot, _ = plot_boxplot(stats["targets"][:, 0], stats["t_stop"][:, 0], fig_boxplot, ax_boxplot, class_names, tmin=0, tmax=args.sequencelength)
 
             wandb.log({
-                "trainloss": trainloss,
-                "testloss": testloss,
+                "loss": {"trainloss": trainloss, "testloss": testloss},
                 "accuracy": accuracy,
                 "precision": precision,
                 "recall": recall,
@@ -204,18 +216,20 @@ def main(args):
                 "earliness": earliness,
                 "classification_loss": classification_loss,
                 "earliness_reward": earliness_reward,
-                "confusion_matrix": wandb.plot.confusion_matrix(probs=None, y_true=stats["targets"][:, 0],
-                                                               preds=stats["predictions_at_t_stop"][:, 0],
-                                                               class_names=class_names),
+                "boxplot": wandb.Image(fig_boxplot),
             })
+            wandb.log({"conf_mat" : wandb.plot.confusion_matrix(probs=None,
+                        y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
+                        class_names=class_names, title="Confusion Matrix")})
 
-            visdom_logger(stats)
-            visdom_logger.plot_boxplot(stats["targets"][:, 0], stats["t_stop"][:, 0], tmin=0, tmax=args.sequencelength)
+
+            #visdom_logger(stats)
+            #visdom_logger.plot_boxplot(stats["targets"][:, 0], stats["t_stop"][:, 0], tmin=0, tmax=args.sequencelength)
             df = pd.DataFrame(train_stats).set_index("epoch")
-            visdom_logger.plot_epochs(df[["precision", "recall", "fscore", "kappa"]], name="accuracy metrics")
-            visdom_logger.plot_epochs(df[["trainloss", "testloss"]], name="losses")
-            visdom_logger.plot_epochs(df[["accuracy", "earliness"]], name="accuracy, earliness")
-            visdom_logger.plot_epochs(df[["classification_loss", "earliness_reward"]], name="loss components")
+            #visdom_logger.plot_epochs(df[["precision", "recall", "fscore", "kappa"]], name="accuracy metrics")
+            # visdom_logger.plot_epochs(df[["trainloss", "testloss"]], name="losses")
+            # visdom_logger.plot_epochs(df[["accuracy", "earliness"]], name="accuracy, earliness")
+            # visdom_logger.plot_epochs(df[["classification_loss", "earliness_reward"]], name="loss components")
 
             savemsg = ""
             if len(df) > 2:
@@ -228,6 +242,7 @@ def main(args):
                                                       os.path.basename(args.snapshot).replace(".pth", "_optimizer.pth")
                                                       )
                     torch.save(optimizer.state_dict(), optimizer_snapshot)
+                    wandb.log_artifact(args.snapshot, type="model")  
 
                     df.to_csv(args.snapshot + ".csv")
                     not_improved = 0 # reset early stopping counter
@@ -242,14 +257,13 @@ def main(args):
                      f"accuracy {accuracy:.2f}, earliness {earliness:.2f}. "
                      f"classification loss {classification_loss:.2f}, earliness reward {earliness_reward:.2f}. {savemsg}")
             
-            wandb.log_artifact(args.snapshot, type="model")        
-
+                
             if args.patience is not None:
                 if not_improved > args.patience:
                     print(f"stopping training. testloss {testloss:.2f} did not improve in {args.patience} epochs.")
                     break
         
-    # save model to wandb
+    # ----------------------------- SAVE FINAL MODEL -----------------------------
     model.to_onnx()
     wandb.save("model.onnx")
 

@@ -11,3 +11,4 @@ elects_environment
 *.npy
 /wandb
 *.h5
+EDA/wandb
