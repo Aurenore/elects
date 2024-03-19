@@ -35,9 +35,9 @@ RUN pip install --timeout 3600 -r /tmp/requirements.txt
 # copy source code into the container
 # COPY . .
 
-# copy the folder data into the container
-COPY data data
-COPY utils utils
+# # copy the folder data into the container
+# COPY data data
+# COPY utils utils
 
-# download datasets into the container once
-RUN python -c "from data import BreizhCrops; BreizhCrops('train'); BreizhCrops('valid'); BreizhCrops('eval')"
+# # download datasets into the container once
+# RUN python -c "from data import BreizhCrops; BreizhCrops('train'); BreizhCrops('valid'); BreizhCrops('eval')"
