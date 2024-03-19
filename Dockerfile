@@ -25,11 +25,19 @@ USER $NB_USER
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --timeout 3600 -r /tmp/requirements.txt
 
+# # export WANDB_API_KEY from $ENV_FILE
+# RUN export $(grep -v '^#' $ENV_FILE | xargs) && \
+#     export WANDB_API_KEY=$SECRET_WANDB_API_KEY 
+
 
 # add visual code extension
 
 # copy source code into the container
 # COPY . .
 
-# download datasets into the container once (~400 MB)
-# RUN python -c "from data import BavarianCrops; BavarianCrops('train'); BavarianCrops('valid'); BavarianCrops('eval')"
+# copy the folder data into the container
+COPY data data
+COPY utils utils
+
+# download datasets into the container once
+RUN python -c "from data import BreizhCrops; BreizhCrops('train'); BreizhCrops('valid'); BreizhCrops('eval')"

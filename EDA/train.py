@@ -1,5 +1,6 @@
 import sys
 import os 
+os.environ['MPLCONFIGDIR'] = '/myhome'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
 from torch.utils.data import DataLoader
@@ -278,7 +279,6 @@ def train_epoch(model, dataloader, optimizer, criterion, device):
 
         loss = criterion(log_class_probabilities, probability_stopping, y_true)
 
-        #assert not loss.isnan().any()
         if not loss.isnan().any():
             loss.backward()
             optimizer.step()
@@ -322,7 +322,7 @@ if __name__ == '__main__':
         # set the wandb project where this run will be logged
         project="ELECTS",
         notes="first experimentations with ELECTS",
-        tags=["ELECTS", "bavariancrops"],
+        tags=["ELECTS", args.dataset],
         # track hyperparameters and run metadata
         config={
         "dataset": args.dataset,
@@ -335,6 +335,9 @@ if __name__ == '__main__':
         "epochs": args.epochs,
         "sequencelength": args.sequencelength,
         "batchsize": args.batchsize,
+        "dataroot": args.dataroot,
+        "snapshot": args.snapshot,
+        "resume": args.resume,
         "architecture": "EarlyRNN",
         "optimizer": "AdamW",
         "criterion": "EarlyRewardLoss",

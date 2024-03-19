@@ -7,21 +7,27 @@ if [ -f "$ENV_FILE" ]; then
   set +o allexport
 fi
 
-REPO='https://github.com/Aurenore/elects.git' # The URL of the repository
+REPO='https://github.com/Aurenore/elects' # The URL of the repository
 BRANCH_NAME='docker_test' # The branch name
 REVISION='HEAD' # The revision to checkout
 USER=$GIT_USER # The username of the repository
-PASSWORD=$GIT_TOKEN # the token 
-TARGET_DIRECTORY_TO_CLONE=$HOME # The directory to clone the repository into
+PASSWORD=$GIT_TOKEN # the secret token 
+TARGET_DIRECTORY_TO_CLONE="/workspace" # The directory to clone the repository into
+
+DATAROOT="/mydata/studentanya/anya/elects_data"
+SNAPSHOTSPATH=“/mydata/studentanya/anya/elects_snapshots/$jobname/model.pth“
 
 echo "Cloning $REPO"
 echo "Branch: $BRANCH_NAME"
 echo "Revision: $REVISION"
 echo "Username: $USER"
 echo "Target directory: $TARGET_DIRECTORY_TO_CLONE"
+echo "Data root: $DATAROOT"
+echo "Snapshot path: $SNAPSHOTSPATH"
 
 runai submit $jobname \
---image aurenore/runai-job \
---gpu 0.2 \
+--image aurenore/elects \
 --git-sync source=$REPO,branch=$BRANCH_NAME,rev=$REVISION,username=$USER,password=$PASSWORD,target=$TARGET_DIRECTORY_TO_CLONE \
--- cd $TARGET_DIRECTORY_TO_CLONE/elects.git && python3 EDA/train.py
+--interactive \
+-- export WANDB_API_KEY=$SECRET_WANDB_API_KEY && python -c "import os; os.environ['MPLCONFIGDIR'] = '/myhome';" && cd $TARGET_DIRECTORY_TO_CLONE/elects/EDA && git config --global --add safe.directory /workdir/rev-43300cb1b18f5ceb6517aed1a85f4b1161319de4 #&& python3 train.py --dataset "breizhcrops" --dataroot $DATAROOT --snapshot $SNAPSHOTSPATH
+# to add after git sync: --gpu 0.2 \
