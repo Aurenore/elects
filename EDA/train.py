@@ -268,12 +268,7 @@ def main(args):
                     break
         
     # ----------------------------- SAVE FINAL MODEL -----------------------------
-    # Create a symbolic link pointing to the actual model checkpoint
-    symlink_path = os.path.join(wandb.run.dir, "model.pth")
-    os.symlink(args.snapshot, symlink_path)
-
-    # Save the symbolic link
-    wandb.save(symlink_path)
+    wandb.log_artifact(args.snapshot, type="model")
 
 def train_epoch(model, dataloader, optimizer, criterion, device):
     losses = []
