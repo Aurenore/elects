@@ -220,11 +220,11 @@ def main(args):
                 "classification_loss": classification_loss,
                 "earliness_reward": earliness_reward,
                 "boxplot": wandb.Image(fig_boxplot),
+                "conf_mat" : wandb.plot.confusion_matrix(probs=None,
+                        y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
+                        class_names=class_names, title="Confusion Matrix")
             })
             plt.close(fig_boxplot)
-            wandb.log({"conf_mat" : wandb.plot.confusion_matrix(probs=None,
-                        y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
-                        class_names=class_names, title="Confusion Matrix")})
 
 
             #visdom_logger(stats)

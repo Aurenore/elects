@@ -19,9 +19,12 @@ BRANCH_NAME='docker_test'
 REVISION='HEAD'
 USER=$GIT_USER
 PASSWORD=$GIT_TOKEN
-TARGET_DIRECTORY_TO_CLONE="/myhome/cloned_repos"
-DATAROOT="/mydata/studentanya/anya/elects_data"
-SNAPSHOTSPATH="/mydata/studentanya/anya/elects_snapshots/${jobname}/model.pth"
+JOBNAME_PREFIX="test-training-working-image"
+TARGET_DIRECTORY_TO_CLONE="/workspace/cloned_repos"
+PROJECTUSER_PATH="/mydata/studentanya/anya"
+DATAROOT="$PROJECTUSER_PATH/elects_data"
+DATA="bavariancrops" #"breizhcrops"
+SNAPSHOTSPATH="$PROJECTUSER_PATH/elects_snapshots/$DATA/$JOBNAME_PREFIX/model.pth"
 
 # Display configuration to the user
 echo "Cloning $REPO"
@@ -35,14 +38,12 @@ echo "home: $HOME"
 
 # Submitting the job
 runai submit $jobname \
+  --job-name-prefix $JOBNAME_PREFIX \
   --image aurenore/elects \
   --environment WANDB_API_KEY=$SECRET_WANDB_API_KEY \
+  --gpu 0.1 \
   --working-dir $TARGET_DIRECTORY_TO_CLONE/elects \
+  --backoff-limit 1 \
   --git-sync source=$REPO,branch=$BRANCH_NAME,rev=$REVISION,username=$USER,password=$PASSWORD,target=$TARGET_DIRECTORY_TO_CLONE \
-  -- python EDA/train.py --dataset 'breizhcrops' --dataroot $DATAROOT --snapshot $SNAPSHOTSPATH
+  -- python EDA/train.py --dataset $DATA --dataroot $DATAROOT --snapshot $SNAPSHOTSPATH --epochs 20
   
-#   bash -c "echo in_container && \
-#                         export WANDB_API_KEY=$SECRET_WANDB_API_KEY && \
-#                         echo \$TARGET_DIRECTORY_TO_CLONE && \
-#                         cd \$TARGET_DIRECTORY_TO_CLONE/elects && \
-#                         python3 EDA/train.py --dataset 'breizhcrops' --dataroot \$DATAROOT --snapshot \$SNAPSHOTSPATH"
