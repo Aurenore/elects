@@ -25,6 +25,9 @@ USER $NB_USER
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --timeout 3600 -r /tmp/requirements.txt
 
+ENV PYTHONPATH=/workspace/.local/lib/python3.10/site-packages
+
+
 # # export WANDB_API_KEY from $ENV_FILE
 # RUN export $(grep -v '^#' $ENV_FILE | xargs) && \
 #     export WANDB_API_KEY=$SECRET_WANDB_API_KEY 
