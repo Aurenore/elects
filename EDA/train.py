@@ -76,7 +76,7 @@ def main(args):
         input_dim = 13
         train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=args.sequencelength)
         test_ds = BreizhCrops(root=dataroot,partition="valid", sequencelength=args.sequencelength)
-        class_names = test_ds.ds.classes
+        class_names = test_ds.ds.classname
         print("class names:", class_names)
     elif args.dataset in ["ghana"]:
         use_s2_only = False
