@@ -27,6 +27,9 @@ RUN pip install --timeout 3600 -r /tmp/requirements.txt
 
 ENV PYTHONPATH=/workspace/.local/lib/python3.10/site-packages
 
+COPY ./entrypoint.sh /entrypoint.sh
+# RUN chmod a+x /entrypoint.sh
+ENTRYPOINT ["tini", "-g", "--", "/bin/bash", "/entrypoint.sh"]
 
 # # export WANDB_API_KEY from $ENV_FILE
 # RUN export $(grep -v '^#' $ENV_FILE | xargs) && \

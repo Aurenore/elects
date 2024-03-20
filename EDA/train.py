@@ -320,7 +320,7 @@ def test_epoch(model, dataloader, criterion, device):
 if __name__ == '__main__':
     args = parse_args()
     wandb.init(
-        # set the wandb project where this run will be logged
+        dir="/mydata/studentanya/anya/wandb/",
         project="ELECTS",
         notes="first experimentations with ELECTS",
         tags=["ELECTS", args.dataset],
