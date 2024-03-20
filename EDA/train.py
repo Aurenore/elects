@@ -77,6 +77,7 @@ def main(args):
         train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=args.sequencelength)
         test_ds = BreizhCrops(root=dataroot,partition="valid", sequencelength=args.sequencelength)
         class_names = test_ds.ds.classes
+        print("class names:", class_names)
     elif args.dataset in ["ghana"]:
         use_s2_only = False
         average_pixel = False
@@ -130,6 +131,7 @@ def main(args):
     fig, ax = plt.subplots(figsize=(15, 7))
     fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
     wandb.log({"label_distribution": wandb.Image(fig)})
+    plt.close(fig)
         
     # ----------------------------- SET UP MODEL -----------------------------
     model = EarlyRNN(nclasses=nclasses, input_dim=input_dim).to(args.device)
@@ -219,6 +221,7 @@ def main(args):
                 "earliness_reward": earliness_reward,
                 "boxplot": wandb.Image(fig_boxplot),
             })
+            plt.close(fig_boxplot)
             wandb.log({"conf_mat" : wandb.plot.confusion_matrix(probs=None,
                         y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
                         class_names=class_names, title="Confusion Matrix")})
@@ -265,8 +268,7 @@ def main(args):
                     break
         
     # ----------------------------- SAVE FINAL MODEL -----------------------------
-    model.to_onnx()
-    wandb.save("model.onnx")
+    wandb.save(wandb.run.dir, args.snapshot)
 
 def train_epoch(model, dataloader, optimizer, criterion, device):
     losses = []
