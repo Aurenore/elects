@@ -1,22 +1,32 @@
-echo "Please enter the jobname"
+#!/bin/bash
+
+echo "Please enter the jobname:"
 read jobname
 
+# Checking if the ENV_FILE is set and exists
 if [ -f "$ENV_FILE" ]; then
   set -o allexport
-  . $ENV_FILE
+  source $ENV_FILE
   set +o allexport
+else
+  echo "Environment file not found."
+  exit 1
 fi
 
-REPO='https://github.com/Aurenore/elects' # The URL of the repository
-BRANCH_NAME='docker_test' # The branch name
-REVISION='HEAD' # The revision to checkout
-USER=$GIT_USER # The username of the repository
-PASSWORD=$GIT_TOKEN # the secret token 
-TARGET_DIRECTORY_TO_CLONE="/myhome/cloned_repos" # The directory to clone the repository into
+# Configuration variables
+REPO='https://github.com/Aurenore/elects'
+BRANCH_NAME='docker_test'
+REVISION='HEAD'
+USER=$GIT_USER
+PASSWORD=$GIT_TOKEN
+JOBNAME_PREFIX="elects-breizhcrops-training"
+TARGET_DIRECTORY_TO_CLONE="/workspace/cloned_repos"
+PROJECTUSER_PATH="/mydata/studentanya/anya"
+DATAROOT="$PROJECTUSER_PATH/elects_data"
+DATA="breizhcrops"
+SNAPSHOTSPATH="$PROJECTUSER_PATH/elects_snapshots/$DATA/$JOBNAME_PREFIX/model.pth"
 
-DATAROOT="/mydata/studentanya/anya/elects_data"
-SNAPSHOTSPATH=“/mydata/studentanya/anya/elects_snapshots/$jobname/model.pth“
-
+# Display configuration to the user
 echo "Cloning $REPO"
 echo "Branch: $BRANCH_NAME"
 echo "Revision: $REVISION"
@@ -24,9 +34,16 @@ echo "Username: $USER"
 echo "Target directory: $TARGET_DIRECTORY_TO_CLONE"
 echo "Data root: $DATAROOT"
 echo "Snapshot path: $SNAPSHOTSPATH"
+echo "home: $HOME"
 
+# Submitting the job
 runai submit $jobname \
---image aurenore/elects \
---git-sync source=$REPO,branch=$BRANCH_NAME,rev=$REVISION,username=$USER,password=$PASSWORD,target=$TARGET_DIRECTORY_TO_CLONE \
--- export WANDB_API_KEY=$SECRET_WANDB_API_KEY && echo $WANDB_API_KEY && cd $TARGET_DIRECTORY_TO_CLONE && ls && python3 $TARGET_DIRECTORY_TO_CLONE/elects/EDA/train.py --dataset "breizhcrops" --dataroot $DATAROOT --snapshot $SNAPSHOTSPATH # # cd $TARGET_DIRECTORY_TO_CLONE/elects && git config --global --add safe.directory /workspace/rev-43300cb1b18f5ceb6517aed1a85f4b1161319de4 #&& 
-# to add after git sync: --gpu 0.2 \ after git... --interactive 
+  --job-name-prefix $JOBNAME_PREFIX \
+  --image aurenore/elects \
+  --environment WANDB_API_KEY=$SECRET_WANDB_API_KEY \
+  --gpu 0.1 \
+  --working-dir $TARGET_DIRECTORY_TO_CLONE/elects \
+  --backoff-limit 1 \
+  --git-sync source=$REPO,branch=$BRANCH_NAME,rev=$REVISION,username=$USER,password=$PASSWORD,target=$TARGET_DIRECTORY_TO_CLONE \
+  -- python EDA/train.py --dataset $DATA --dataroot $DATAROOT --snapshot $SNAPSHOTSPATH --epochs 100
+  
