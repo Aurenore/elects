@@ -2,4 +2,13 @@ snapshots
 .idea
 __pycache__
 elects_data
-venv
+elects_environment
+*.pth
+*.csv
+*.pdf
+*.png
+*.zip
+*.npy
+/wandb
+*.h5
+EDA/wandb

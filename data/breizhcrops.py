@@ -3,6 +3,9 @@ from torch.utils.data import Dataset
 import os
 import numpy as np
 
+LABELS_NAMES = ['barley', 'wheat', 'rapeseed', 'corn', 'sunflower', 'orchards',
+       'nuts', 'perm. mead', 'temp. mead']
+
 class BreizhCrops(Dataset):
     def __init__(self, partition="train", root="breizhcrops_dataset", sequencelength=70, year=2017, return_id=False):
         assert partition in ["train", "valid", "eval"]
@@ -49,6 +52,19 @@ class BreizhCrops(Dataset):
             return X, y, id
         else:
             return X, y
+        
+    def get_sequence_lengths(self):
+        """ 
+        Returns the sequence lengths of the time series in the dataset
+        """
+        if hasattr(self.ds, "datasets"):
+            sequence_length = []
+            for ds in self.ds.datasets:
+                sequence_length.append(np.array(ds.index['sequencelength'].values))
+            sequence_length = np.concatenate(sequence_length)
+        else:
+            sequence_length = np.array(self.ds.index['sequencelength'].values)
+        return np.array(sequence_length)
 
 
 import os

@@ -1,3 +1,7 @@
+import sys
+import os 
+os.environ['MPLCONFIGDIR'] = '/myhome'
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
 from torch.utils.data import DataLoader
 from earlyrnn import EarlyRNN
@@ -5,11 +9,14 @@ import torch
 from tqdm import tqdm
 from loss import EarlyRewardLoss
 import numpy as np
-from utils import VisdomLogger
 import sklearn.metrics
 import pandas as pd
 import argparse
 import os
+import wandb
+from utils.plots import plot_label_distribution_datasets, plot_boxplot
+import matplotlib.pyplot as plt
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Run ELECTS Early Classification training on the BavarianCrops dataset.')
@@ -29,7 +36,7 @@ def parse_args():
                                                                 "they are zero-padded until this length; "
                                                                 "if samples are longer, they will be undersampled")
     parser.add_argument('--batchsize', type=int, default=256, help="number of samples per batch")
-    parser.add_argument('--dataroot', type=str, default=os.path.join(os.environ["HOME"],"elects_data"), help="directory to download the "
+    parser.add_argument('--dataroot', type=str, default=os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data"), help="directory to download the "
                                                                                  "BavarianCrops dataset (400MB)."
                                                                                  "Defaults to home directory.")
     parser.add_argument('--snapshot', type=str, default="snapshots/model.pth",
@@ -45,6 +52,7 @@ def parse_args():
     return args
 
 def main(args):
+    # ----------------------------- LOAD DATASET -----------------------------
 
     if args.dataset == "bavariancrops":
         dataroot = os.path.join(args.dataroot,"bavariancrops")
@@ -53,6 +61,7 @@ def main(args):
         class_weights = None
         train_ds = BavarianCrops(root=dataroot,partition="train", sequencelength=args.sequencelength)
         test_ds = BavarianCrops(root=dataroot,partition="valid", sequencelength=args.sequencelength)
+        class_names = test_ds.classes
     elif args.dataset == "unitedstates":
         args.dataroot = "/data/modiscdl/"
         args.sequencelength = 24
@@ -67,6 +76,8 @@ def main(args):
         input_dim = 13
         train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=args.sequencelength)
         test_ds = BreizhCrops(root=dataroot,partition="valid", sequencelength=args.sequencelength)
+        class_names = test_ds.ds.classname
+        print("class names:", class_names)
     elif args.dataset in ["ghana"]:
         use_s2_only = False
         average_pixel = False
@@ -89,6 +100,7 @@ def main(args):
         test_ds = SustainbenchCrops(root=dataroot,partition="test", sequencelength=args.sequencelength,
                                     country="ghana", use_s2_only=use_s2_only, average_pixel=average_pixel,
                                     max_n_pixels=max_n_pixels)
+        class_names = test_ds.classes
     elif args.dataset in ["southsudan"]:
         use_s2_only = False
         dataroot = args.dataroot
@@ -102,17 +114,26 @@ def main(args):
         train_ds = torch.utils.data.ConcatDataset([train_ds, val_ds])
         test_ds = SustainbenchCrops(root=dataroot, partition="val", sequencelength=args.sequencelength,
                                    country="southsudan", use_s2_only=use_s2_only)
+        class_names = test_ds.classes
 
     else:
         raise ValueError(f"dataset {args.dataset} not recognized")
-
+    
     traindataloader = DataLoader(
         train_ds,
         batch_size=args.batchsize)
     testdataloader = DataLoader(
         test_ds,
         batch_size=args.batchsize)
-
+    # ----------------------------- VISUALIZATION: label distribution -----------------------------
+    datasets = [train_ds, test_ds]
+    sets_labels = ["Train", "Validation"]
+    fig, ax = plt.subplots(figsize=(15, 7))
+    fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
+    wandb.log({"label_distribution": wandb.Image(fig)})
+    plt.close(fig)
+        
+    # ----------------------------- SET UP MODEL -----------------------------
     model = EarlyRNN(nclasses=nclasses, input_dim=input_dim).to(args.device)
 
 
@@ -144,9 +165,11 @@ def main(args):
     else:
         train_stats = []
         start_epoch = 1
-    visdom_logger = VisdomLogger()
 
     not_improved = 0
+    
+    # ----------------------------- TRAINING -----------------------------
+    print("starting training...")
     with tqdm(range(start_epoch, args.epochs + 1)) as pbar:
         for epoch in pbar:
             trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=args.device)
@@ -165,9 +188,7 @@ def main(args):
             earliness_reward = stats["earliness_reward"].mean()
             earliness = 1 - (stats["t_stop"].mean() / (args.sequencelength - 1))
 
-            stats["confusion_matrix"] = sklearn.metrics.confusion_matrix(y_pred=stats["predictions_at_t_stop"][:, 0],
-                                                                         y_true=stats["targets"][:, 0])
-
+            # ----------------------------- LOGGING -----------------------------
             train_stats.append(
                 dict(
                     epoch=epoch,
@@ -183,14 +204,27 @@ def main(args):
                     earliness_reward=earliness_reward
                 )
             )
+            fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
+            fig_boxplot, _ = plot_boxplot(stats["targets"][:, 0], stats["t_stop"][:, 0], fig_boxplot, ax_boxplot, class_names, tmin=0, tmax=args.sequencelength)
 
-            visdom_logger(stats)
-            visdom_logger.plot_boxplot(stats["targets"][:, 0], stats["t_stop"][:, 0], tmin=0, tmax=args.sequencelength)
+            wandb.log({
+                "loss": {"trainloss": trainloss, "testloss": testloss},
+                "accuracy": accuracy,
+                "precision": precision,
+                "recall": recall,
+                "fscore": fscore,
+                "kappa": kappa,
+                "earliness": earliness,
+                "classification_loss": classification_loss,
+                "earliness_reward": earliness_reward,
+                "boxplot": wandb.Image(fig_boxplot),
+                "conf_mat" : wandb.plot.confusion_matrix(probs=None,
+                        y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
+                        class_names=class_names, title="Confusion Matrix")
+            })
+            plt.close(fig_boxplot)
+
             df = pd.DataFrame(train_stats).set_index("epoch")
-            visdom_logger.plot_epochs(df[["precision", "recall", "fscore", "kappa"]], name="accuracy metrics")
-            visdom_logger.plot_epochs(df[["trainloss", "testloss"]], name="losses")
-            visdom_logger.plot_epochs(df[["accuracy", "earliness"]], name="accuracy, earliness")
-            visdom_logger.plot_epochs(df[["classification_loss", "earliness_reward"]], name="loss components")
 
             savemsg = ""
             if len(df) > 2:
@@ -203,6 +237,7 @@ def main(args):
                                                       os.path.basename(args.snapshot).replace(".pth", "_optimizer.pth")
                                                       )
                     torch.save(optimizer.state_dict(), optimizer_snapshot)
+                    wandb.log_artifact(args.snapshot, type="model")  
 
                     df.to_csv(args.snapshot + ".csv")
                     not_improved = 0 # reset early stopping counter
@@ -216,11 +251,16 @@ def main(args):
             pbar.set_description(f"epoch {epoch}: trainloss {trainloss:.2f}, testloss {testloss:.2f}, "
                      f"accuracy {accuracy:.2f}, earliness {earliness:.2f}. "
                      f"classification loss {classification_loss:.2f}, earliness reward {earliness_reward:.2f}. {savemsg}")
-
+            
+                
             if args.patience is not None:
                 if not_improved > args.patience:
                     print(f"stopping training. testloss {testloss:.2f} did not improve in {args.patience} epochs.")
                     break
+        
+    # ----------------------------- SAVE FINAL MODEL -----------------------------
+    wandb.log_artifact(args.snapshot, type="model")
+
 
 def train_epoch(model, dataloader, optimizer, criterion, device):
     losses = []
@@ -233,7 +273,6 @@ def train_epoch(model, dataloader, optimizer, criterion, device):
 
         loss = criterion(log_class_probabilities, probability_stopping, y_true)
 
-        #assert not loss.isnan().any()
         if not loss.isnan().any():
             loss.backward()
             optimizer.step()
@@ -241,6 +280,7 @@ def train_epoch(model, dataloader, optimizer, criterion, device):
             losses.append(loss.cpu().detach().numpy())
 
     return np.stack(losses).mean()
+
 
 def test_epoch(model, dataloader, criterion, device):
     model.eval()
@@ -270,6 +310,33 @@ def test_epoch(model, dataloader, criterion, device):
 
     return np.stack(losses).mean(), stats
 
+
 if __name__ == '__main__':
     args = parse_args()
+    wandb.init(
+        dir="/mydata/studentanya/anya/wandb/",
+        project="ELECTS",
+        notes="first experimentations with ELECTS",
+        tags=["ELECTS", args.dataset],
+        # track hyperparameters and run metadata
+        config={
+        "dataset": args.dataset,
+        "alpha": args.alpha,
+        "epsilon": args.epsilon,
+        "learning_rate": args.learning_rate,
+        "weight_decay": args.weight_decay,
+        "patience": args.patience,
+        "device": args.device,
+        "epochs": args.epochs,
+        "sequencelength": args.sequencelength,
+        "batchsize": args.batchsize,
+        "dataroot": args.dataroot,
+        "snapshot": args.snapshot,
+        "resume": args.resume,
+        "architecture": "EarlyRNN",
+        "optimizer": "AdamW",
+        "criterion": "EarlyRewardLoss",
+        }
+    )
     main(args)
+    wandb.finish()

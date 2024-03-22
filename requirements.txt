@@ -4,11 +4,10 @@ pandas
 seaborn
 matplotlib
 requests
-visdom
 tqdm
 scikit-learn
 jupyter
 breizhcrops
 netCDF4
-visdom
 torchvision
+wandb

@@ -41,18 +41,11 @@ Notebook provided in `elects.ipynb`
 ## Run Training Loop
 
 ### Monitor training visally (optional)
-
-start [visdom](https://github.com/fossasia/visdom) server for visual training progress
-```bash
-❯ visdom
-Checking for scripts.
-It's Alive!
-INFO:root:Application Started
-You can navigate to http://localhost:8097
+Create an account on [wandb](https://wandb.ai) and store your API key in a file `.env` in an environment file. The file should look like this:
 ```
-and navigate to [http://localhost:8097/](http://localhost:8097/) in the browser of your choice.
-
-<img height="200px" src="./png/visdom.png">
+SECRET_WANDB_API_KEY=your_api_key
+```
+Then set the environment variable `ENV_FILE` to the path of the environment file.
 
 ### Start training loop
 
@@ -81,3 +74,10 @@ python train.py --dataroot /data/sustainbench --dataset ghana
 python train.py --dataroot /data/sustainbench --dataset southsudan
 
 --dataroot /data/sustainbench --dataset southsudan --epochs 500
+
+# launch jobs on runai
+Use the shell script `submit_job.sh` to launch jobs on runai. By default, the dataset is set to `breizhcrops`. To run the shell, first set the environment variable `ENV_FILE` to the path of the environment file. Then run the shell script as follows:
+```
+./submit_job.sh
+```
+You can follow the progress of the job on your wandb account. 
