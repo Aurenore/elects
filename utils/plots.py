@@ -44,6 +44,7 @@ def plot_label_distribution_datasets(datasets: list, sets_labels: list, fig, ax,
 
 def boxplot_stopping_times(doy_stop, stats, labels_names=['barley', 'wheat', 'rapeseed', 'corn', 'sunflower', 'orchards',
         'nuts', 'perm. mead', 'temp. mead']):
+    # TO DO 
     doys_months = [datetime.datetime(2017,m,1).timetuple().tm_yday for m in range(1,13)]
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     fig, ax = plt.subplots(figsize=(8,4))

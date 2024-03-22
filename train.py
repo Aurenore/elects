@@ -167,9 +167,9 @@ def main(args):
         start_epoch = 1
 
     not_improved = 0
-    print("starting training...")
-
+    
     # ----------------------------- TRAINING -----------------------------
+    print("starting training...")
     with tqdm(range(start_epoch, args.epochs + 1)) as pbar:
         for epoch in pbar:
             trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=args.device)
@@ -188,9 +188,7 @@ def main(args):
             earliness_reward = stats["earliness_reward"].mean()
             earliness = 1 - (stats["t_stop"].mean() / (args.sequencelength - 1))
 
-            #stats["confusion_matrix"] = sklearn.metrics.confusion_matrix(y_pred=stats["predictions_at_t_stop"][:, 0],
-                                                                   #      y_true=stats["targets"][:, 0])
-
+            # ----------------------------- LOGGING -----------------------------
             train_stats.append(
                 dict(
                     epoch=epoch,
@@ -226,14 +224,7 @@ def main(args):
             })
             plt.close(fig_boxplot)
 
-
-            #visdom_logger(stats)
-            #visdom_logger.plot_boxplot(stats["targets"][:, 0], stats["t_stop"][:, 0], tmin=0, tmax=args.sequencelength)
             df = pd.DataFrame(train_stats).set_index("epoch")
-            #visdom_logger.plot_epochs(df[["precision", "recall", "fscore", "kappa"]], name="accuracy metrics")
-            # visdom_logger.plot_epochs(df[["trainloss", "testloss"]], name="losses")
-            # visdom_logger.plot_epochs(df[["accuracy", "earliness"]], name="accuracy, earliness")
-            # visdom_logger.plot_epochs(df[["classification_loss", "earliness_reward"]], name="loss components")
 
             savemsg = ""
             if len(df) > 2:
@@ -270,6 +261,7 @@ def main(args):
     # ----------------------------- SAVE FINAL MODEL -----------------------------
     wandb.log_artifact(args.snapshot, type="model")
 
+
 def train_epoch(model, dataloader, optimizer, criterion, device):
     losses = []
     model.train()
@@ -288,6 +280,7 @@ def train_epoch(model, dataloader, optimizer, criterion, device):
             losses.append(loss.cpu().detach().numpy())
 
     return np.stack(losses).mean()
+
 
 def test_epoch(model, dataloader, criterion, device):
     model.eval()
@@ -316,6 +309,7 @@ def test_epoch(model, dataloader, criterion, device):
     stats = {k: np.vstack([dic[k] for dic in stats]) for k in stats[0]}
 
     return np.stack(losses).mean(), stats
+
 
 if __name__ == '__main__':
     args = parse_args()
