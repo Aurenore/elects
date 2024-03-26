@@ -76,7 +76,7 @@ def main(args):
         nclasses = 9
         input_dim = 13
         print("get doys dict test")
-        doys_dict_test = get_doys_dict_test()
+        doys_dict_test = get_doys_dict_test(dataroot=os.path.join(args.dataroot,args.dataset))
         length_sorted_doy_dict_test = create_sorted_doys_dict_test(doys_dict_test)
         print("get doys dict test done")
         print("get test and validation data...")

@@ -2,14 +2,15 @@ import numpy as np
 import requests
 import os
 
-def get_doys_dict_test(npydoy: str='breizhcrops_frh04_2017_doys.npy'):
+def get_doys_dict_test(dataroot:str, npydoy: str='breizhcrops_frh04_2017_doys.npy'):
     """ loads the dictionary of doys from the npy file, if it does not exist, it downloads it from the internet"""
-    if not os.path.exists(npydoy):
+    filepath = os.path.join(dataroot, npydoy)
+    if not os.path.exists(filepath):
         url = "https://elects.s3.eu-central-1.amazonaws.com/"+npydoy
         response = requests.get(url)
-        with open(npydoy, 'wb') as f:
+        with open(filepath, 'wb') as f:
             f.write(response.content)
-    doys_dict = np.load(npydoy, allow_pickle=True).flat[0]
+    doys_dict = np.load(filepath, allow_pickle=True).flat[0]
     return doys_dict
 
 def get_doy_stop(stats, doys_dict):
