@@ -42,13 +42,11 @@ def plot_label_distribution_datasets(datasets: list, sets_labels: list, fig, ax,
     return fig, ax
 
 
-def boxplot_stopping_times(doy_stop, stats, labels_names=['barley', 'wheat', 'rapeseed', 'corn', 'sunflower', 'orchards',
-        'nuts', 'perm. mead', 'temp. mead']):
-    # TO DO 
+def boxplot_stopping_times(doy_stop, stats, fig, ax, labels_names=LABELS_NAMES, colors=seaborn.color_palette("colorblind")):
     doys_months = [datetime.datetime(2017,m,1).timetuple().tm_yday for m in range(1,13)]
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    fig, ax = plt.subplots(figsize=(8,4))
-    seaborn.boxplot(x=doy_stop,y=stats["targets"][:,0],orient="h",ax=ax,showfliers = False)
+    seaborn.boxplot(x=doy_stop,y=stats["targets"][:,0],orient="h",ax=ax,showfliers=False, palette=colors[:len(labels_names)])
+    ax.set_yticks(range(len(labels_names)))
     ax.set_yticklabels(labels_names, fontsize=16)
     ax.set_xlabel("day of year", fontsize=16)
 
@@ -57,6 +55,8 @@ def boxplot_stopping_times(doy_stop, stats, labels_names=['barley', 'wheat', 'ra
     ax.set_xticklabels(months, ha="left")
 
     seaborn.despine(left=True)
+    fig.tight_layout()
+    return fig, ax
 
 
 def plot_boxplot(labels, t_stops, fig, ax, label_names: list=LABELS_NAMES, tmin=None, tmax=None):

@@ -14,7 +14,8 @@ import pandas as pd
 import argparse
 import os
 import wandb
-from utils.plots import plot_label_distribution_datasets, plot_boxplot
+from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times, plot_boxplot
+from utils.doy import get_doys_dict_test, get_approximated_doys_dict, get_doy_stop, create_sorted_doys_dict_test
 import matplotlib.pyplot as plt
 
 
@@ -77,6 +78,9 @@ def main(args):
         train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=args.sequencelength)
         test_ds = BreizhCrops(root=dataroot,partition="valid", sequencelength=args.sequencelength)
         class_names = test_ds.ds.classname
+        print("get doys dict test")
+        doys_dict_test = get_doys_dict_test()
+        length_sorted_doy_dict_test = create_sorted_doys_dict_test(doys_dict_test)
         print("class names:", class_names)
     elif args.dataset in ["ghana"]:
         use_s2_only = False
@@ -205,8 +209,10 @@ def main(args):
                 )
             )
             fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
-            fig_boxplot, _ = plot_boxplot(stats["targets"][:, 0], stats["t_stop"][:, 0], fig_boxplot, ax_boxplot, class_names, tmin=0, tmax=args.sequencelength)
-
+            doys_dict = get_approximated_doys_dict(stats["seqlengths"], length_sorted_doy_dict_test)
+            doys_stop = get_doy_stop(stats, doys_dict)
+            #fig_boxplot, _ = plot_boxplot(stats["targets"][:, 0], stats["t_stop"][:, 0], fig_boxplot, ax_boxplot, class_names, tmin=0, tmax=args.sequencelength)
+            fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names)
             wandb.log({
                 "loss": {"trainloss": trainloss, "testloss": testloss},
                 "accuracy": accuracy,
@@ -287,9 +293,13 @@ def test_epoch(model, dataloader, criterion, device):
 
     stats = []
     losses = []
-    for batch in dataloader:
+    slengths = []
+    for ids, batch in enumerate(dataloader):
         X, y_true = batch
         X, y_true = X.to(device), y_true.to(device)
+
+        seqlengths = (X[:,:,0] != 0).sum(1)
+        slengths.append(seqlengths.cpu().detach())
 
         log_class_probabilities, probability_stopping, predictions_at_t_stop, t_stop = model.predict(X)
         loss, stat = criterion(log_class_probabilities, probability_stopping, y_true, return_stats=True)
@@ -300,6 +310,7 @@ def test_epoch(model, dataloader, criterion, device):
         stat["predictions_at_t_stop"] = predictions_at_t_stop.unsqueeze(-1).cpu().detach().numpy()
         stat["t_stop"] = t_stop.unsqueeze(-1).cpu().detach().numpy()
         stat["targets"] = y_true.cpu().detach().numpy()
+        stat["ids"] = ids
 
         stats.append(stat)
 
@@ -307,6 +318,7 @@ def test_epoch(model, dataloader, criterion, device):
 
     # list of dicts to dict of lists
     stats = {k: np.vstack([dic[k] for dic in stats]) for k in stats[0]}
+    stats["seqlengths"] = torch.cat(slengths).numpy()
 
     return np.stack(losses).mean(), stats
 
@@ -317,7 +329,7 @@ if __name__ == '__main__':
         dir="/mydata/studentanya/anya/wandb/",
         project="ELECTS",
         notes="first experimentations with ELECTS",
-        tags=["ELECTS", args.dataset],
+        tags=["ELECTS", args.dataset, "with_doys_boxplot"],
         # track hyperparameters and run metadata
         config={
         "dataset": args.dataset,

@@ -41,7 +41,6 @@ runai submit $jobname \
   --job-name-prefix $JOBNAME_PREFIX \
   --image aurenore/elects \
   --environment WANDB_API_KEY=$SECRET_WANDB_API_KEY \
-  --gpu 0.1 \
   --working-dir $TARGET_DIRECTORY_TO_CLONE/elects \
   --backoff-limit 1 \
   --git-sync source=$REPO,branch=$BRANCH_NAME,rev=$REVISION,username=$USER,password=$PASSWORD,target=$TARGET_DIRECTORY_TO_CLONE \
