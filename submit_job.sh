@@ -15,7 +15,7 @@ fi
 
 # Configuration variables
 REPO='https://github.com/Aurenore/elects'
-BRANCH_NAME='docker_test'
+BRANCH_NAME='different_models'
 REVISION='HEAD'
 USER=$GIT_USER
 PASSWORD=$GIT_TOKEN

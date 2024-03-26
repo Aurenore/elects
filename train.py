@@ -75,12 +75,14 @@ def main(args):
         dataroot = os.path.join(args.dataroot,"breizhcrops")
         nclasses = 9
         input_dim = 13
-        train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=args.sequencelength)
-        test_ds = BreizhCrops(root=dataroot,partition="valid", sequencelength=args.sequencelength)
-        class_names = test_ds.ds.classname
         print("get doys dict test")
         doys_dict_test = get_doys_dict_test()
         length_sorted_doy_dict_test = create_sorted_doys_dict_test(doys_dict_test)
+        print("get doys dict test done")
+        print("get test and validation data...")
+        train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=args.sequencelength)
+        test_ds = BreizhCrops(root=dataroot,partition="valid", sequencelength=args.sequencelength)
+        class_names = test_ds.ds.classname
         print("class names:", class_names)
     elif args.dataset in ["ghana"]:
         use_s2_only = False
