@@ -64,7 +64,7 @@ def get_approximated_doys_dict(lengths: list, length_sorted_doys_dict: dict):
     The length_sorted_doys_dict is a dictionary where the key is the length of the doy and the value is the approximated doy.
     """
     doys_dict = {}
-    for idx, length in lengths:
+    for idx, length in enumerate(lengths):
         approximated_doy = length_sorted_doys_dict[length]
         doys_dict.update({idx: approximated_doy})
     return doys_dict

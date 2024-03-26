@@ -12,3 +12,4 @@ elects_environment
 /wandb
 *.h5
 EDA/wandb
+/venv
