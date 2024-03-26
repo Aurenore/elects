@@ -40,7 +40,7 @@ echo "home: $HOME"
 runai submit $jobname \
   --job-name-prefix $JOBNAME_PREFIX \
   --image aurenore/elects \
-  --gpu 0.1 \
+  --gpu 0.2 \
   --environment WANDB_API_KEY=$SECRET_WANDB_API_KEY \
   --working-dir $TARGET_DIRECTORY_TO_CLONE/elects \
   --backoff-limit 1 \

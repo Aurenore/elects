@@ -244,7 +244,7 @@ if __name__ == '__main__':
     args = parse_args()
     wandb.init(
         dir="/mydata/studentanya/anya/wandb/",
-        project="ELECTS",
+        project="MasterThesis",
         notes="first experimentations with ELECTS",
         tags=["ELECTS", args.dataset, "with_doys_boxplot"],
         config={
