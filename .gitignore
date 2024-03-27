@@ -13,3 +13,4 @@ elects_environment
 *.h5
 EDA/wandb
 /venv
+*.json

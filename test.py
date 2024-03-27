@@ -3,14 +3,13 @@ import os
 os.environ['MPLCONFIGDIR'] = '/myhome'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
-from torch.utils.data import DataLoader
 from earlyrnn import EarlyRNN
 import torch
 from loss import EarlyRewardLoss
 import pandas as pd
 from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times
-from utils.doy import get_doys_dict_test, get_doy_stop, create_sorted_doys_dict_test, get_approximated_doys_dict
-from utils.helpers_training import parse_args, train_epoch, test_epoch
+from utils.doy import get_doys_dict_test, get_doy_stop
+from utils.helpers_training import parse_args
 from utils.helpers_testing import test_dataset, get_test_stats
 import matplotlib.pyplot as plt
 

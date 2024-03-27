@@ -105,7 +105,7 @@ def main(args):
     plt.close(fig)
         
     # ----------------------------- SET UP MODEL -----------------------------
-    model = EarlyRNN(nclasses=nclasses, input_dim=input_dim, sequencelength=args.sequencelength).to(args.device)
+    model = EarlyRNN(nclasses=nclasses, input_dim=input_dim, sequencelength=args.sequencelength, hidden_dims=args.hidden_dims).to(args.device)
 
 
     #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
@@ -258,6 +258,7 @@ if __name__ == '__main__':
         "device": args.device,
         "epochs": args.epochs,
         "sequencelength": args.sequencelength,
+        "hidden_dims": args.hidden_dims,
         "batchsize": args.batchsize,
         "dataroot": args.dataroot,
         "snapshot": args.snapshot,
