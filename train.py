@@ -105,7 +105,7 @@ def main(args):
     plt.close(fig)
         
     # ----------------------------- SET UP MODEL -----------------------------
-    model = EarlyRNN(nclasses=nclasses, input_dim=input_dim).to(args.device)
+    model = EarlyRNN(nclasses=nclasses, input_dim=input_dim, sequencelength=args.sequencelength).to(args.device)
 
 
     #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
@@ -178,11 +178,7 @@ def main(args):
                     harmonic_mean=harmonic_mean,
                 )
             )
-            fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
-            doys_dict = get_approximated_doys_dict(stats["seqlengths"], length_sorted_doy_dict_test)
-            doys_stop = get_doy_stop(stats, doys_dict)
-            fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names)
-            wandb.log({
+            dict_to_wandb = {
                     "loss": {"trainloss": trainloss, "testloss": testloss},
                     "accuracy": accuracy,
                     "precision": precision,
@@ -194,12 +190,20 @@ def main(args):
                     "earliness_reward": earliness_reward,
                     "classification_earliness": stats["classification_earliness"],
                     "harmonic_mean": harmonic_mean,
-                    "boxplot": wandb.Image(fig_boxplot),
                     "conf_mat" : wandb.plot.confusion_matrix(probs=None,
                             y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
                             class_names=class_names, title="Confusion Matrix")
-                })
-            plt.close(fig_boxplot)
+                }
+            if epoch % 10 == 0:
+                fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
+                doys_dict = get_approximated_doys_dict(stats["seqlengths"], length_sorted_doy_dict_test)
+                doys_stop = get_doy_stop(stats, doys_dict)
+                fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names)
+                dict_to_wandb["boxplot"] = wandb.Image(fig_boxplot)
+                plt.close(fig_boxplot)
+            
+            wandb.log(dict_to_wandb)
+            
 
             df = pd.DataFrame(train_stats).set_index("epoch")
 
@@ -234,9 +238,6 @@ def main(args):
                 if not_improved > args.patience:
                     print(f"stopping training. testloss {testloss:.2f} did not improve in {args.patience} epochs.")
                     break
-        
-    # ----------------------------- SAVE FINAL MODEL -----------------------------
-    wandb.log_artifact(args.snapshot, type="model")
 
 
 

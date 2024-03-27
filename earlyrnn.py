@@ -5,9 +5,11 @@ import torch.utils.data
 import os
 #from models.EarlyClassificationModel import EarlyClassificationModel
 from torch.nn.modules.normalization import LayerNorm
+from models.TempCNN import TempCNN
+
 
 class EarlyRNN(nn.Module):
-    def __init__(self, input_dim=13, hidden_dims=64, nclasses=7, num_rnn_layers=2, dropout=0.2):
+    def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, kernel_size:int=7):
         super(EarlyRNN, self).__init__()
 
         # input transformations
@@ -16,8 +18,8 @@ class EarlyRNN(nn.Module):
             nn.Linear(input_dim, hidden_dims) # project to hidden_dims length
         )
 
-        self.backbone = nn.LSTM(input_size=hidden_dims, hidden_size=hidden_dims, num_layers=num_rnn_layers,
-                            bias=False, batch_first=True, dropout=dropout, bidirectional=False)
+        # backbone model 
+        self.initialize_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size)
 
         # Heads
         self.classification_head = ClassificationHead(hidden_dims, nclasses)
@@ -25,9 +27,13 @@ class EarlyRNN(nn.Module):
 
     def forward(self, x):
         x = self.intransforms(x)
-
-        outputs, last_state_list = self.backbone(x)
-
+        # TO DO: CORRECT THE SHAPE OF THE OUTPUTS
+        # outputs, last_state_list = self.backbone(x)
+        output_tupple = self.backbone(x)
+        if type(output_tupple) == tuple:
+            outputs = output_tupple[0]
+        else:
+            outputs = output_tupple
         log_class_probabilities = self.classification_head(outputs)
         probabilitiy_stopping = self.stopping_decision_head(outputs)
 
@@ -72,6 +78,44 @@ class EarlyRNN(nn.Module):
         predictions_at_t_stop = torch.masked_select(predictions, first_stops)
 
         return logprobabilities, deltas, predictions_at_t_stop, t_stop
+    
+    def initialize_model(self, backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size):
+        self.backbone = get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size)
+        
+
+def get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size):
+    model_map = {
+        "LSTM": {
+            "class": nn.LSTM,
+            "config": {
+                "input_size": hidden_dims,
+                "hidden_size": hidden_dims,
+                "num_layers": num_rnn_layers,
+                "bias": False,
+                "batch_first": True,
+                "dropout": dropout,
+                "bidirectional": False
+            }
+        },
+        "TempCNN": {
+            "class": TempCNN,
+            "config": {
+                "input_dim": hidden_dims,
+                "num_classes": nclasses,
+                "sequencelength": sequencelength,
+                "kernel_size": kernel_size,
+                "hidden_dims": hidden_dims, 
+                "dropout": dropout
+            }
+        }
+    }
+    
+    if backbone_model in model_map:
+        model_info = model_map[backbone_model]
+        return model_info["class"](**model_info["config"])
+    else:
+        raise ValueError(f"Backbone model {backbone_model} is not implemented yet.")
+
 
 class ClassificationHead(torch.nn.Module):
 

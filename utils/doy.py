@@ -13,10 +13,26 @@ def get_doys_dict_test(dataroot:str, npydoy: str='breizhcrops_frh04_2017_doys.np
     doys_dict = np.load(filepath, allow_pickle=True).flat[0]
     return doys_dict
 
-def get_doy_stop(stats, doys_dict):
-    """ returns the day of year at which the model stops for each sample in the stats dictionary"""
+def get_doy_stop(stats, doys_dict, approximated=True):
+    """ returns the day of year at which the model stops for each sample in the stats dictionary
+    if approximated is True: 
+        - the doys_dict is a dictionary of approximated doys, 
+        - the keys are the length of the corresponding doy,
+        - the values are the approximated doys (from get_approximated_doy_function)
+        - the ids are the lengths of the sequences
+    if approximated is False: 
+        - the doys_dict is a dictionary of true doys (from the test set)
+        - the keys are the ids of the samples
+        - the values are the true doys of the samples
+        - the ids are the ids of the samples
+    """
     doy_stop = []
-    for id, t_stop in zip(stats["seqlengths"], stats["t_stop"][:,0]):
+    if approximated:
+        ids_list = stats["seqlengths"]
+    else:
+        ids_list = stats["ids"][:,0]
+        
+    for id, t_stop in zip(ids_list, stats["t_stop"][:,0]):
         doys = doys_dict[id]
         doy_stop.append(doys[t_stop-1])
     doy_stop = np.array(doy_stop)
