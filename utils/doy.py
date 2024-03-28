@@ -34,6 +34,8 @@ def get_doy_stop(stats, doys_dict, approximated=True):
         
     for id, t_stop in zip(ids_list, stats["t_stop"][:,0]):
         doys = doys_dict[id]
+        if t_stop>=len(doys):
+            t_stop = len(doys)-1
         doy_stop.append(doys[t_stop-1])
     doy_stop = np.array(doy_stop)
     return doy_stop

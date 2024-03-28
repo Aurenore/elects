@@ -25,15 +25,15 @@ class TempCNN(torch.nn.Module):
                          f"kernelsize={kernel_size}_hidden-dims={hidden_dims}_dropout={dropout}"
 
         self.hidden_dims = hidden_dims
-
+        dense_hidden_dims = 4*hidden_dims # if =hidden_dims, the model has about less than 30'000 parameters.
         self.conv_bn_relu1 = Conv1D_BatchNorm_Relu_Dropout(input_dim, hidden_dims, kernel_size=kernel_size,
                                                            drop_probability=dropout)
         self.conv_bn_relu2 = Conv1D_BatchNorm_Relu_Dropout(hidden_dims, hidden_dims, kernel_size=kernel_size,
                                                            drop_probability=dropout)
         self.conv_bn_relu3 = Conv1D_BatchNorm_Relu_Dropout(hidden_dims, hidden_dims, kernel_size=kernel_size,
                                                            drop_probability=dropout) 
-        self.dense = FC_BatchNorm_Relu_Dropout(hidden_dims, 4*hidden_dims, drop_probability=dropout) 
-        self.logsoftmax = nn.Sequential(nn.Linear(4 * hidden_dims, hidden_dims), nn.LogSoftmax(dim=-1))
+        self.dense = FC_BatchNorm_Relu_Dropout(hidden_dims, dense_hidden_dims, drop_probability=dropout) 
+        self.logsoftmax = nn.Sequential(nn.Linear(dense_hidden_dims, hidden_dims), nn.LogSoftmax(dim=-1))
 
     def forward(self, x):
         # require NxTxD (batch_size, sequencelength, input_dim)
