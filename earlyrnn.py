@@ -27,8 +27,6 @@ class EarlyRNN(nn.Module):
 
     def forward(self, x):
         x = self.intransforms(x)
-        # TO DO: CORRECT THE SHAPE OF THE OUTPUTS
-        # outputs, last_state_list = self.backbone(x)
         output_tupple = self.backbone(x)
         if type(output_tupple) == tuple:
             outputs = output_tupple[0]
