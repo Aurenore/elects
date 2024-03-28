@@ -34,7 +34,7 @@ def main(args):
     fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
         
     # ----------------------------- LOAD MODEL -----------------------------
-    model = EarlyRNN(nclasses=nclasses, input_dim=input_dim, sequencelength=args.sequencelength).to(args.device)
+    model = EarlyRNN(nclasses=nclasses, input_dim=input_dim, hidden_dims=args.hidden_dims, sequencelength=args.sequencelength).to(args.device)
     model.load_state_dict(torch.load(args.snapshot))
     print("model loaded from", args.snapshot) 
     criterion = EarlyRewardLoss(alpha=args.alpha, epsilon=args.epsilon)
@@ -52,10 +52,11 @@ def main(args):
     fig_boxplot.savefig(os.path.join(os.path.dirname(args.snapshot), "stopping_times.png"), bbox_inches='tight')
     test_stats_df = pd.DataFrame(test_stats, index=[0])
     test_stats_df.to_csv(os.path.join(os.path.dirname(args.snapshot), "test_stats.csv"))
+    plt.show()
 
 
 if __name__ == '__main__':
     # use example: 
-    # python test.py --dataset breizhcrops --snapshot ./models/breizhcrops_models/elects_lstm/model.pth
+    # python test.py --dataset breizhcrops --snapshot ./models/breizhcrops_models/elects_lstm/model.pth --sequencelength 150 --hidden-dims 64
     args = parse_args()
     main(args)

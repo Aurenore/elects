@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument('--sequencelength', type=int, default=70, help="sequencelength of the time series. If samples are shorter, "
                                                                 "they are zero-padded until this length; "
                                                                 "if samples are longer, they will be undersampled")
-    parser.add_argument('--hidden-dims', type=int, default=32, help="number of hidden dimensions in the backbone model")
+    parser.add_argument('--hidden-dims', type=int, default=64, help="number of hidden dimensions in the backbone model")
     parser.add_argument('--batchsize', type=int, default=256, help="number of samples per batch")
     parser.add_argument('--dataroot', type=str, default=os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data"), help="directory to download the "
                                                                                  "BavarianCrops dataset (400MB)."
