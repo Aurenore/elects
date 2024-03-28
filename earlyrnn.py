@@ -33,7 +33,7 @@ class EarlyRNN(nn.Module):
         if type(output_tupple) == tuple:
             outputs = output_tupple[0]
         else:
-            outputs = output_tupple
+            outputs = output_tupple # shape : (batch_size, sequencelength, hidden_dims)
         log_class_probabilities = self.classification_head(outputs)
         probabilitiy_stopping = self.stopping_decision_head(outputs)
 
@@ -101,7 +101,6 @@ def get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn
             "class": TempCNN,
             "config": {
                 "input_dim": hidden_dims,
-                "num_classes": nclasses,
                 "sequencelength": sequencelength,
                 "kernel_size": kernel_size,
                 "hidden_dims": hidden_dims, 
