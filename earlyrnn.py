@@ -139,9 +139,9 @@ class DecisionHead(torch.nn.Module):
         # initialize bias to predict late in first epochs
         torch.nn.init.normal_(self.projection[0].bias, mean=-2e1, std=1e-1)
 
-
     def forward(self, x):
         return self.projection(x).squeeze(2)
+
 
 if __name__ == "__main__":
     model = EarlyRNN()

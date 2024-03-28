@@ -25,6 +25,7 @@ PROJECTUSER_PATH="/mydata/studentanya/anya"
 DATAROOT="$PROJECTUSER_PATH/elects_data"
 DATA="breizhcrops"
 SNAPSHOTSPATH="$PROJECTUSER_PATH/elects_snapshots/$DATA/$JOBNAME_PREFIX/model.pth"
+BACKBONEMODEL="TempCNN"
 
 # Display configuration to the user
 echo "Cloning $REPO"
@@ -34,16 +35,17 @@ echo "Username: $USER"
 echo "Target directory: $TARGET_DIRECTORY_TO_CLONE"
 echo "Data root: $DATAROOT"
 echo "Snapshot path: $SNAPSHOTSPATH"
+echo "Backbone model: $BACKBONEMODEL"
 echo "home: $HOME"
 
 # Submitting the job
 runai submit $jobname \
   --job-name-prefix $JOBNAME_PREFIX \
   --image aurenore/elects \
-  --gpu 0.2 \
+  --gpu 0.1 \
   --environment WANDB_API_KEY=$SECRET_WANDB_API_KEY \
   --working-dir $TARGET_DIRECTORY_TO_CLONE/elects \
   --backoff-limit 1 \
   --git-sync source=$REPO,branch=$BRANCH_NAME,rev=$REVISION,username=$USER,password=$PASSWORD,target=$TARGET_DIRECTORY_TO_CLONE \
-  -- python train.py --dataset $DATA --dataroot $DATAROOT --snapshot $SNAPSHOTSPATH --epochs 100
+  -- python train.py --backbonemodel $BACKBONEMODEL --dataset $DATA --dataroot $DATAROOT --snapshot $SNAPSHOTSPATH --epochs 100  
   

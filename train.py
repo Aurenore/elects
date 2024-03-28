@@ -95,15 +95,15 @@ def main(args):
         test_ds,
         batch_size=args.batchsize)
     # ----------------------------- VISUALIZATION: label distribution -----------------------------
-    datasets = [train_ds, test_ds]
-    sets_labels = ["Train", "Validation"]
-    fig, ax = plt.subplots(figsize=(15, 7))
-    fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
-    wandb.log({"label_distribution": wandb.Image(fig)})
-    plt.close(fig)
+    # datasets = [train_ds, test_ds]
+    # sets_labels = ["Train", "Validation"]
+    # fig, ax = plt.subplots(figsize=(15, 7))
+    # fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
+    # wandb.log({"label_distribution": wandb.Image(fig)})
+    # plt.close(fig)
         
     # ----------------------------- SET UP MODEL -----------------------------
-    model = EarlyRNN(nclasses=nclasses, input_dim=input_dim, sequencelength=args.sequencelength, hidden_dims=args.hidden_dims).to(args.device)
+    model = EarlyRNN(args.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=args.sequencelength, hidden_dims=args.hidden_dims).to(args.device)
 
 
     #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
@@ -192,7 +192,7 @@ def main(args):
                             y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
                             class_names=class_names, title="Confusion Matrix")
                 }
-            if epoch % 10 == 0:
+            if epoch % 10 == 1:
                 fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
                 doys_dict = get_approximated_doys_dict(stats["seqlengths"], length_sorted_doy_dict_test)
                 doys_stop = get_doy_stop(stats, doys_dict)
@@ -244,9 +244,10 @@ if __name__ == '__main__':
     wandb.init(
         dir="/mydata/studentanya/anya/wandb/",
         project="MasterThesis",
-        notes="first experimentations with ELECTS",
-        tags=["ELECTS", args.dataset, "with_doys_boxplot"],
+        notes="ELECTS with different backbone models.",
+        tags=["ELECTS", args.dataset, args.backbonemodel, "earlyrnn", "trials"],
         config={
+        "backbonemodel": args.backbonemodel,
         "dataset": args.dataset,
         "alpha": args.alpha,
         "epsilon": args.epsilon,
