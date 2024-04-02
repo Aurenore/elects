@@ -14,3 +14,4 @@ elects_environment
 EDA/wandb
 /venv
 *.json
+*.pkl

@@ -11,3 +11,4 @@ breizhcrops
 netCDF4
 torchvision
 wandb
+ipykernel
