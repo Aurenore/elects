@@ -42,7 +42,6 @@ class TempCNN(torch.nn.Module):
         x = self.conv_bn_relu2(x)
         x = self.conv_bn_relu3(x)
         x = x.transpose(1,2) # (batch_size, sequencelength, hidden_dims)
-        #x = self.flatten(x) remove it such that we still have the time stamps dimensions. 
         x = self.dense(x) # (batch_size, 4*hidden_dims, sequencelength)
         x = x.transpose(1,2) # (batch_size, 4*hidden_dims, sequencelength) -> (batch_size, sequencelength, 4*hidden_dims)
         x = self.logsoftmax(x) # (batch_size, sequencelength, hidden_dims)

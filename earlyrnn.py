@@ -11,6 +11,8 @@ from models.TempCNN import TempCNN
 class EarlyRNN(nn.Module):
     def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, kernel_size:int=7):
         super(EarlyRNN, self).__init__()
+        # padding layer, for certain models that require padding
+        self.padding = Padding()
 
         # input transformations
         self.intransforms = nn.Sequential(
@@ -25,7 +27,8 @@ class EarlyRNN(nn.Module):
         self.classification_head = ClassificationHead(hidden_dims, nclasses)
         self.stopping_decision_head = DecisionHead(hidden_dims)
 
-    def forward(self, x):
+    def forward(self, x, **kwargs):
+        x = self.padding(x, **kwargs)
         x = self.intransforms(x)
         output_tupple = self.backbone(x)
         if type(output_tupple) == tuple:
@@ -38,8 +41,8 @@ class EarlyRNN(nn.Module):
         return log_class_probabilities, probabilitiy_stopping
 
     @torch.no_grad()
-    def predict(self, x):
-        logprobabilities, deltas = self.forward(x)
+    def predict(self, x, **kwargs):
+        logprobabilities, deltas = self.forward(x, **kwargs)
 
         def sample_stop_decision(delta):
             dist = torch.stack([1 - delta, delta], dim=1)
@@ -51,7 +54,7 @@ class EarlyRNN(nn.Module):
         for t in range(sequencelength):
             # stop if sampled true and not stopped previously
             if t < sequencelength - 1:
-                stop_now = sample_stop_decision(deltas[:, t])
+                stop_now = sample_stop_decision(deltas[:, t]) # stop decision is true with probability delta
                 stop.append(stop_now)
             else:
                 # make sure to stop last
@@ -61,13 +64,18 @@ class EarlyRNN(nn.Module):
                 stop.append(last_stop)
 
         # stack over the time dimension (multiple stops possible)
-        stopped = torch.stack(stop, dim=1).bool()
+        stopped = torch.stack(stop, dim=1).bool() # has a true if the model decides to stop at time t
 
         # is only true if stopped for the first time
         first_stops = (stopped.cumsum(1) == 1) & stopped
 
         # time of stopping
-        t_stop = first_stops.long().argmax(1)
+        t_stop = first_stops.long().argmax(1) # get the index of the first stop
+        
+        # if there is an extra padding, the stopping time is shifted: 
+        if len(kwargs) > 0:
+            extra_padding = kwargs.get("extra_padding", 0)
+            t_stop -= extra_padding
 
         # all predictions
         predictions = logprobabilities.argmax(-1)
@@ -113,6 +121,23 @@ def get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn
     else:
         raise ValueError(f"Backbone model {backbone_model} is not implemented yet.")
 
+
+class Padding(nn.Module):
+    def __init__(self): 
+        super(Padding, self).__init__()
+
+    def forward(self, x, **kwargs):
+        if len(kwargs) > 0:
+            extra_padding = kwargs.get("extra_padding", 0)
+            if extra_padding > 0:
+                # add extra padding to the input, on the left side
+                x = torch.cat([torch.zeros(x.shape[0], extra_padding, x.shape[2], device=x.device), x], dim=1)
+                # remove the extra padding from the output, on the right side
+                x = x[:, :-extra_padding, :]
+            return x
+        else:
+            return x
+        
 
 class ClassificationHead(torch.nn.Module):
 

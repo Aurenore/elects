@@ -34,6 +34,8 @@ def test_dataset(model, test_ds, criterion, device, batch_size):
             # we clip the t_stop to the maximum sequencelength here 
             msk = t_stop > seqlengths
             t_stop[msk] = seqlengths[msk]
+            # max probabitliy in probability_stopping until the end of sequence (seqlengths)
+            max_prob_until_sequence_end = [torch.max(probability_stopping[i, :seqlengths[i]]) for i in range(len(seqlengths))]
                         
             stat["loss"] = loss.cpu().detach().numpy()
             stat["probability_stopping"] = probability_stopping.cpu().detach().numpy()
@@ -42,6 +44,7 @@ def test_dataset(model, test_ds, criterion, device, batch_size):
             stat["t_stop"] = t_stop.unsqueeze(-1).cpu().detach().numpy()
             stat["targets"] = y_true.cpu().detach().numpy()
             stat["ids"] = ids.unsqueeze(1)
+            stat["max_prob_until_sequence_end"] = torch.stack(max_prob_until_sequence_end).cpu().detach().numpy()
 
             stats.append(stat)
             losses.append(loss.cpu().detach().numpy())
@@ -109,8 +112,8 @@ def test_temp_masking(model, test_ds, criterion, device, batch_size, sequence_le
                 temporal_mask[unpredicted_seq_mask,:i+1,:] = True
                 X_masked = X * temporal_mask
                 log_class_probabilities, probability_stopping, predictions_at_t_stop, t_stop = model.predict(X_masked)
-                prob_at_t_stop = torch.max(probability_stopping[:, :i+1], dim=1)[0]#torch.gather(probability_stopping, 1, t_stop.unsqueeze(1)).squeeze()
-                unpredicted_seq_mask = unpredicted_seq_mask * (prob_at_t_stop < thresh_stop)
+                max_prob_until_i = torch.max(probability_stopping[:, :i+1], dim=1)[0]#torch.gather(probability_stopping, 1, t_stop.unsqueeze(1)).squeeze()
+                unpredicted_seq_mask = unpredicted_seq_mask * (max_prob_until_i < thresh_stop)
                 # if i%step==0:
                 #     print(f"at i={i}, number of unpredicted sequences", unpredicted_seq_mask.sum())
                 # if unpredicted_seq_mask.sum() == 0:
