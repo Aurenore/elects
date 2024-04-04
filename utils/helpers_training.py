@@ -86,9 +86,6 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
 
         seqlengths = (X[:,:,0] != 0).sum(1)
         slengths.append(seqlengths.cpu().detach())
-
-        # mask for sequences that are not predicted yet
-        unpredicted_seq_mask = torch.ones(X.shape[0], dtype=bool).to(device) 
         
         # by default, we predict the sequence with the smallest padding
         extra_padding = extra_padding_list[-1]
@@ -96,15 +93,17 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
 
         # predict the sequence with the smallest padding
         log_class_probabilities, probability_stopping, predictions_at_t_stop, t_stop = model.predict(X, **dict_padding)
-        loss, stat = criterion(log_class_probabilities, probability_stopping, y_true, return_stats=True)
             
         if len(extra_padding_list) > 1:
-            i=0 # index for the extra_padding_list
+            # mask for sequences that are not predicted yet
+            unpredicted_seq_mask = torch.ones(X.shape[0], dtype=bool).to(device)
+            # index for the extra_padding_list
+            i=0 
             while unpredicted_seq_mask.any() and i < len(extra_padding_list)-1:
                 extra_padding = extra_padding_list[i]
                 dict_padding = {"extra_padding": extra_padding}
                 log_class_probabilities_temp, probability_stopping_temp, predictions_at_t_stop_temp, t_stop_temp = model.predict(X, **dict_padding)
-                loss_temp, stat_temp = criterion(log_class_probabilities, probability_stopping, y_true, return_stats=True)
+                
                 # update the mask if t_stop is different from the length of the sequence (i.e. the sequence is predicted before its end)
                 unpredicted_seq_mask = unpredicted_seq_mask*(t_stop >= seqlengths-extra_padding)
             
@@ -113,13 +112,9 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
                 probability_stopping = torch.where(~unpredicted_seq_mask.unsqueeze(1), probability_stopping_temp, probability_stopping)
                 predictions_at_t_stop = torch.where(~unpredicted_seq_mask, predictions_at_t_stop_temp, predictions_at_t_stop)
                 t_stop = torch.where(~unpredicted_seq_mask, t_stop_temp, t_stop)
-                loss = torch.where(~unpredicted_seq_mask, loss_temp, loss)
-                stat = {k: np.where(~np.expand_dims(unpredicted_seq_mask.cpu().numpy(), axis=1), v, stat[k]) for k, v in stat_temp.items()}
                 i+=1
-            # mean: so not exact measure, as it takes into account predictions that are not kept at the end. Only indicative. 
-            stat["classification_loss"] = stat["classification_loss"].mean() 
-            stat["earliness_reward"] = stat["earliness_reward"].mean()
-            loss = loss.mean()
+
+        loss, stat = criterion(log_class_probabilities, probability_stopping, y_true, return_stats=True)
         stat["loss"] = loss.cpu().detach().numpy()
         stat["probability_stopping"] = probability_stopping.cpu().detach().numpy()
         stat["class_probabilities"] = log_class_probabilities.exp().cpu().detach().numpy()
