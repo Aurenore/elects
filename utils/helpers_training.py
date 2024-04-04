@@ -7,6 +7,10 @@ import torch
 import numpy as np
 
 def parse_args():
+    def int_list(value):
+        # This function will split the string by spaces and convert each to an integer
+        return [int(i) for i in value.split()]
+    
     parser = argparse.ArgumentParser(description='Run ELECTS Early Classification training on the BavarianCrops dataset.')
     parser.add_argument('--backbonemodel', type=str, default="LSTM", choices=["LSTM", "TempCNN"], help="backbone model")
     parser.add_argument('--dataset', type=str, default="breizhcrops", choices=["bavariancrops","breizhcrops", "ghana", "southsudan","unitedstates"], help="dataset")
@@ -24,6 +28,7 @@ def parse_args():
     parser.add_argument('--sequencelength', type=int, default=70, help="sequencelength of the time series. If samples are shorter, "
                                                                 "they are zero-padded until this length; "
                                                                 "if samples are longer, they will be undersampled")
+    parser.add_argument('--extra-padding-list', type=int_list, default=[[0]], nargs='+', help="extra padding for the TempCNN model")
     parser.add_argument('--hidden-dims', type=int, default=64, help="number of hidden dimensions in the backbone model")
     parser.add_argument('--batchsize', type=int, default=256, help="number of samples per batch")
     parser.add_argument('--dataroot', type=str, default=os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data"), help="directory to download the "
@@ -38,16 +43,15 @@ def parse_args():
 
     if args.patience < 0:
         args.patience = None
-
+    args.extra_padding_list = [item for sublist in args.extra_padding_list for item in sublist]
+    
     return args
 
 
-def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_list=None):
+def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_list:list=[0]):
     losses = []
     model.train()
     for batch in dataloader:
-        if extra_padding_list is None:
-            extra_padding_list = [0]
         for extra_padding in extra_padding_list:
             optimizer.zero_grad()
             X, y_true = batch
@@ -66,7 +70,7 @@ def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_l
     return np.stack(losses).mean()
 
 
-def test_epoch(model, dataloader, criterion, device, extra_padding_list=[0]):
+def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]):
     model.eval()
 
     stats = []

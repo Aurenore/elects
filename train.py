@@ -141,8 +141,8 @@ def main(args):
     print("starting training...")
     with tqdm(range(start_epoch, args.epochs + 1)) as pbar:
         for epoch in pbar:
-            trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=args.device)
-            testloss, stats = test_epoch(model, testdataloader, criterion, args.device)
+            trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=args.device, extra_padding_list=args.extra_padding_list)
+            testloss, stats = test_epoch(model, testdataloader, criterion, args.device, extra_padding_list=args.extra_padding_list)
 
             # statistic logging and visualization...
             precision, recall, fscore, support = sklearn.metrics.precision_recall_fscore_support(
@@ -240,6 +240,8 @@ def main(args):
 
 
 if __name__ == '__main__':
+    # use example: 
+    # python train.py --backbonemodel TempCNN --backbonemodel TempCNN --dataset breizhcrops --epochs 100 --hidden-dims 16 --sequencelength 70 --extra-padding-list 35 0
     args = parse_args()
     wandb.init(
         dir="/mydata/studentanya/anya/wandb/",
@@ -257,6 +259,7 @@ if __name__ == '__main__':
         "device": args.device,
         "epochs": args.epochs,
         "sequencelength": args.sequencelength,
+        "extra_padding_list": args.extra_padding_list,  
         "hidden_dims": args.hidden_dims,
         "batchsize": args.batchsize,
         "dataroot": args.dataroot,
