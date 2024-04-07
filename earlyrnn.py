@@ -130,10 +130,11 @@ class Padding(nn.Module):
         if len(kwargs) > 0:
             extra_padding = kwargs.get("extra_padding", 0)
             if extra_padding > 0:
-                # add extra padding to the input, on the left side
-                x = torch.cat([torch.zeros(x.shape[0], extra_padding, x.shape[2], device=x.device), x], dim=1)
                 # remove the extra padding from the output, on the right side
                 x = x[:, :-extra_padding, :]
+                # add extra padding to the input, on the right side
+                x = torch.cat([x, torch.zeros(x.shape[0], extra_padding, x.shape[2], device=x.device)], dim=1)
+                
             return x
         else:
             return x
