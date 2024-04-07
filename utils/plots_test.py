@@ -2,6 +2,7 @@ import datetime
 import seaborn 
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
 from data import LABELS_NAMES
 
 PALETTE=sns.color_palette("colorblind")
@@ -119,3 +120,38 @@ def plot_all_doy_probs(stats, doys_dict, palette=PALETTE, nclasses=9, class_name
     fig.suptitle("Stopping probabilities for each class")
     fig.tight_layout()
     return fig, axes
+
+
+def plot_confusion_matrix(y_true, y_pred, class_names, fig, ax):
+    """
+    Plots a confusion matrix with the true labels on the x-axis and predicted labels on the y-axis.
+    
+    Parameters:
+    y_true (array-like): Ground truth (correct) target values.
+    y_pred (array-like): Estimated targets as returned by a classifier.
+    class_names (list): List of class names to be plotted on the x and y axis.
+    fig (matplotlib.figure.Figure): The figure object.
+    ax (matplotlib.axes.Axes): The axes object.
+    
+    Returns:
+    matplotlib.figure.Figure: The figure object with the confusion matrix.
+    """
+    
+    # Compute confusion matrix
+    conf_mat = confusion_matrix(y_true, y_pred)
+    
+    # Plot the confusion matrix
+    sns.heatmap(conf_mat.T, annot=True, cmap='Blues', ax=ax, xticklabels=class_names, yticklabels=class_names, fmt='d')
+
+    # Labels, title and ticks
+    ax.set_xlabel('True labels')
+    ax.set_ylabel('Predicted labels')
+    ax.xaxis.set_ticklabels(class_names, rotation=45, ha='right')
+    ax.yaxis.set_ticklabels(class_names, rotation=45)
+
+    # Compute the accuracy of the model 
+    accuracy = np.trace(conf_mat) / float(np.sum(conf_mat))
+    fig.suptitle(f"Overall accuracy {100*accuracy:.1f}%", fontsize=16)
+    fig.tight_layout()
+    
+    return fig

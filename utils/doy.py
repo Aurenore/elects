@@ -13,7 +13,7 @@ def get_doys_dict_test(dataroot:str, npydoy: str='breizhcrops_frh04_2017_doys.np
     doys_dict = np.load(filepath, allow_pickle=True).flat[0]
     return doys_dict
 
-def get_doy_stop(stats, doys_dict, approximated=True):
+def get_doy_stop(stats, doys_dict, t_stop_key="t_stop", approximated=True):
     """ returns the day of year at which the model stops for each sample in the stats dictionary
     if approximated is True: 
         - the doys_dict is a dictionary of approximated doys, 
@@ -31,8 +31,15 @@ def get_doy_stop(stats, doys_dict, approximated=True):
         ids_list = stats["seqlengths"]
     else:
         ids_list = stats["ids"][:,0]
-        
-    for id, t_stop in zip(ids_list, stats["t_stop"][:,0]):
+
+    if t_stop_key=="t_stop":
+        t_stop_list = stats["t_stop"][:,0]
+    elif t_stop_key=="t_stop_max_prob": 
+        t_stop_list = stats["t_stop_max_prob"]
+    else:
+        raise ValueError(f"t_stop_key {t_stop_key} not recognized")
+    
+    for id, t_stop in zip(ids_list, t_stop_list):
         doys = doys_dict[id]
         if t_stop>=len(doys):
             t_stop = len(doys)-1
