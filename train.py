@@ -13,8 +13,10 @@ import pandas as pd
 import wandb
 from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times
 from utils.doy import get_doys_dict_test, get_doy_stop, create_sorted_doys_dict_test, get_approximated_doys_dict
-from utils.helpers_training import parse_args, train_epoch, test_epoch
+from utils.helpers_training import parse_args, train_epoch
+from utils.helpers_testing import test_epoch
 from utils.metrics import harmonic_mean_score
+from models.model_helpers import count_parameters
 import matplotlib.pyplot as plt
 
 def main(args):
@@ -104,7 +106,7 @@ def main(args):
         
     # ----------------------------- SET UP MODEL -----------------------------
     model = EarlyRNN(args.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=args.sequencelength, hidden_dims=args.hidden_dims).to(args.device)
-
+    wandb.config.update({"nb_parameters": count_parameters(model)})
 
     #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
 
@@ -142,7 +144,7 @@ def main(args):
     with tqdm(range(start_epoch, args.epochs + 1)) as pbar:
         for epoch in pbar:
             trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=args.device, extra_padding_list=args.extra_padding_list)
-            testloss, stats = test_epoch(model, testdataloader, criterion, args.device, extra_padding_list=args.extra_padding_list)
+            testloss, stats = test_epoch(model, testdataloader, criterion, args.device, extra_padding_list=args.extra_padding_list, return_id=test_ds.return_id)
 
             # statistic logging and visualization...
             precision, recall, fscore, support = sklearn.metrics.precision_recall_fscore_support(

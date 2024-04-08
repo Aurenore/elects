@@ -48,5 +48,5 @@ runai submit $jobname \
   --working-dir $TARGET_DIRECTORY_TO_CLONE/elects \
   --backoff-limit 1 \
   --git-sync source=$REPO,branch=$BRANCH_NAME,rev=$REVISION,username=$USER,password=$PASSWORD,target=$TARGET_DIRECTORY_TO_CLONE \
-  -- python train.py --backbonemodel $BACKBONEMODEL --dataset $DATA --dataroot $DATAROOT --snapshot $SNAPSHOTSPATH --epochs 100 --sequencelength 70 --extra-padding-list 50 40 30 20 10 0 --hidden-dims 16
+  -- python train.py --backbonemodel $BACKBONEMODEL --dataset $DATA --dataroot $DATAROOT --snapshot $SNAPSHOTSPATH --epochs 100 --sequencelength 70 --extra-padding-list 50 40 30 20 10 0 --hidden-dims 64
   

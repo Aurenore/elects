@@ -4,6 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 from data import LABELS_NAMES
+from utils.helpers_testing import get_prob_t_stop
 
 PALETTE=sns.color_palette("colorblind")
 
@@ -155,3 +156,16 @@ def plot_confusion_matrix(y_true, y_pred, class_names, fig, ax):
     fig.tight_layout()
     
     return fig
+
+
+def plot_probability_stopping(stats, index, ax):
+    prob_t_stop = get_prob_t_stop(stats["probability_stopping"])
+    ax.plot(stats["probability_stopping"][index], label="prob_stopping")
+    ax.plot(prob_t_stop[index], linestyle='--', label="prob_t_stop")
+    # vertical line at seqlength, with label "sequence length"
+    ax.axvline(x=stats["seqlengths"][index], color='b',  label="sequence length")
+    # vertical line at t_stop, with label "t_stop"
+    ax.axvline(x=stats["t_stop"][index,0], color='y', label="t_stop")
+    ax.legend()
+    ax.set_title("Probability stopping")
+    return ax
