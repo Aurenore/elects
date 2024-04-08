@@ -105,7 +105,7 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
                 log_class_probabilities_temp, probability_stopping_temp, predictions_at_t_stop_temp, t_stop_temp = model.predict(X, **dict_padding)
                 
                 # update the mask if t_stop is different from the length of the sequence (i.e. the sequence is predicted before its end)
-                unpredicted_seq_mask = unpredicted_seq_mask*(t_stop >= seqlengths-extra_padding)
+                unpredicted_seq_mask = unpredicted_seq_mask*(t_stop >= seqlengths)
             
                 # update the metrics data with the mask of predicted sequences
                 log_class_probabilities = torch.where(~unpredicted_seq_mask.unsqueeze(1).unsqueeze(-1), log_class_probabilities_temp, log_class_probabilities)

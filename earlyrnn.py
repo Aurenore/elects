@@ -71,11 +71,6 @@ class EarlyRNN(nn.Module):
 
         # time of stopping
         t_stop = first_stops.long().argmax(1) # get the index of the first stop
-        
-        # if there is an extra padding, the stopping time is shifted: 
-        if len(kwargs) > 0:
-            extra_padding = kwargs.get("extra_padding", 0)
-            t_stop -= extra_padding
 
         # all predictions
         predictions = logprobabilities.argmax(-1)
