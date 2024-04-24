@@ -1,6 +1,7 @@
 import sys
 import os 
 os.environ['MPLCONFIGDIR'] = '/myhome'
+from sweep_init import PROJECTUSER_PATH
 os.environ["WANDB_DIR"] = os.path.abspath(f"{PROJECTUSER_PATH}/wandb")
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
@@ -19,7 +20,6 @@ from utils.helpers_testing import test_epoch
 from utils.metrics import harmonic_mean_score
 from models.model_helpers import count_parameters
 import matplotlib.pyplot as plt
-from sweep_init import PROJECTUSER_PATH
 
 def main():
     wandb.init(
