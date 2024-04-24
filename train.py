@@ -105,7 +105,7 @@ def main(args):
     # plt.close(fig)
         
     # ----------------------------- SET UP MODEL -----------------------------
-    model = EarlyRNN(args.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=args.sequencelength, hidden_dims=args.hidden_dims).to(args.device)
+    model = EarlyRNN(args.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=args.sequencelength, hidden_dims=args.hidden_dims, left_padding=args.left_padding).to(args.device)
     wandb.config.update({"nb_parameters": count_parameters(model)})
 
     #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
@@ -245,11 +245,12 @@ if __name__ == '__main__':
     # use example: 
     # python train.py --backbonemodel TempCNN --backbonemodel TempCNN --dataset breizhcrops --epochs 100 --hidden-dims 16 --sequencelength 70 --extra-padding-list 35 0
     args = parse_args()
+    tag_left_padding = "left padding" if args.left_padding else "right padding"
     wandb.init(
         dir="/mydata/studentanya/anya/wandb/",
         project="MasterThesis",
         notes="ELECTS with different backbone models.",
-        tags=["ELECTS", args.dataset, args.backbonemodel, "earlyrnn", "trials"],
+        tags=["ELECTS", args.dataset, args.backbonemodel, "earlyrnn", "trials", tag_left_padding],
         config={
         "backbonemodel": args.backbonemodel,
         "dataset": args.dataset,
@@ -266,6 +267,7 @@ if __name__ == '__main__':
         "batchsize": args.batchsize,
         "dataroot": args.dataroot,
         "snapshot": args.snapshot,
+        "left_padding": args.left_padding,
         "resume": args.resume,
         "architecture": "EarlyRNN",
         "optimizer": "AdamW",

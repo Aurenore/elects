@@ -9,10 +9,11 @@ from models.TempCNN import TempCNN
 
 
 class EarlyRNN(nn.Module):
-    def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, kernel_size:int=7):
+    def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, kernel_size:int=7, left_padding:bool=False):
         super(EarlyRNN, self).__init__()
         # padding layer, for certain models that require padding
-        self.padding = Padding()
+        self.left_padding = left_padding
+        self.padding = Padding(left_padding=left_padding)
 
         # input transformations
         self.intransforms = nn.Sequential(
@@ -72,6 +73,10 @@ class EarlyRNN(nn.Module):
         # time of stopping
         t_stop = first_stops.long().argmax(1) # get the index of the first stop
 
+        if self.left_padding and len(kwargs) > 0:
+            extra_padding = kwargs.get("extra_padding", 0)
+            t_stop -= extra_padding
+
         # all predictions
         predictions = logprobabilities.argmax(-1)
 
@@ -118,8 +123,9 @@ def get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn
 
 
 class Padding(nn.Module):
-    def __init__(self): 
+    def __init__(self, left_padding:bool=False): 
         super(Padding, self).__init__()
+        self.left_padding = left_padding
 
     def forward(self, x, **kwargs):
         if len(kwargs) > 0:
@@ -127,9 +133,13 @@ class Padding(nn.Module):
             if extra_padding > 0:
                 # remove the extra padding from the output, on the right side
                 x = x[:, :-extra_padding, :]
-                # add extra padding to the input, on the right side
-                x = torch.cat([x, torch.zeros(x.shape[0], extra_padding, x.shape[2], device=x.device)], dim=1)
-                
+                padding_vec = torch.zeros(x.shape[0], extra_padding, x.shape[2], device=x.device)
+                if self.left_padding:
+                    # add extra padding to the input, on the left side
+                    x = torch.cat([padding_vec, x], dim=1)
+                else:
+                    # add extra padding to the input, on the right side
+                    x = torch.cat([x, padding_vec], dim=1)
             return x
         else:
             return x

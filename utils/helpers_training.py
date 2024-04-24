@@ -36,6 +36,7 @@ def parse_args():
                                                                                  "Defaults to home directory.")
     parser.add_argument('--snapshot', type=str, default="snapshots/model.pth",
                         help="pytorch state dict snapshot file")
+    parser.add_argument('--left-padding', type=bool, default=False, help="left padding for the TempCNN model")
     parser.add_argument('--resume', action='store_true')
 
 
@@ -45,6 +46,12 @@ def parse_args():
         args.patience = None
     args.extra_padding_list = [item for sublist in args.extra_padding_list for item in sublist]
     
+    return args
+
+def parse_args_sweep():    
+    parser = argparse.ArgumentParser(description='Run ELECTS Early Classification training with sweep id.')
+    parser.add_argument('--sweep-id', type=str, help="sweep id")
+    args = parser.parse_args()
     return args
 
 
