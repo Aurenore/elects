@@ -18,13 +18,10 @@ from utils.helpers_testing import test_epoch
 from utils.metrics import harmonic_mean_score
 from models.model_helpers import count_parameters
 import matplotlib.pyplot as plt
-
-base_dir = "/mydata/studentanya/anya/wandb"
-os.environ["WANDB_DIR"] = os.path.abspath(base_dir)
+from sweep_init import PROJECTUSER_PATH
 
 def main():
     wandb.init(
-        dir=base_dir,
         notes="ELECTS with different backbone models.",
         tags=["ELECTS", "earlyrnn", "trials", "sweep"],
     )
@@ -251,6 +248,8 @@ def main():
 
 
 if __name__ == '__main__':
+    base_dir = f"{PROJECTUSER_PATH}/wandb"
+    os.environ["WANDB_DIR"] = os.path.abspath(base_dir)
     args = parse_args_sweep()
     sweep_id = args.sweep_id
     wandb.agent(sweep_id, function=main, count=12, project="MasterThesis")
