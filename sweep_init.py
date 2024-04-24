@@ -6,7 +6,7 @@ DATA="breizhcrops"
 
 sweep_configuration = {
     "method": "random",
-    "name": "sweep",
+    "name": "sweep_left_right_padding",
     "metric": {"goal": "maximize", "name": "harmonic_mean"},
     "parameters": {
         "backbonemodel": {"value": "TempCNN"},
@@ -18,7 +18,7 @@ sweep_configuration = {
         "patience": {"value": 30},
         "device": {"value": "cuda"},
         "epochs": {"value": 100},
-        "sequence_length": {"value": 70},
+        "sequencelength": {"value": 70},
         "extra_padding_list": {"value": [50, 40, 30, 20, 10, 0]},
         "hidden_dims": {"values": [16, 32, 64]},
         "batchsize": {"value": 256},
@@ -30,4 +30,3 @@ sweep_configuration = {
 }
 
 sweep_id = wandb.sweep(sweep=sweep_configuration, project="MasterThesis")
-print("sweep id: ", sweep_id)

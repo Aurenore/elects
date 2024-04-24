@@ -22,7 +22,6 @@ import matplotlib.pyplot as plt
 def main():
     wandb.init(
         dir="/mydata/studentanya/anya/wandb/",
-        project="MasterThesis",
         notes="ELECTS with different backbone models.",
         tags=["ELECTS", "earlyrnn", "trials", "sweep"],
     )
@@ -251,5 +250,5 @@ def main():
 if __name__ == '__main__':
     args = parse_args_sweep()
     sweep_id = args.sweep_id
-    wandb.agent(sweep_id, function=main, count=3, project="MasterThesis")
+    wandb.agent(sweep_id, function=main, count=12, project="MasterThesis")
     wandb.finish()
