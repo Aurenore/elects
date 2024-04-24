@@ -1,6 +1,7 @@
 import sys
 import os 
 os.environ['MPLCONFIGDIR'] = '/myhome'
+os.environ["WANDB_DIR"] = os.path.abspath(f"{PROJECTUSER_PATH}/wandb")
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
 from torch.utils.data import DataLoader
@@ -248,9 +249,7 @@ def main():
 
 
 if __name__ == '__main__':
-    base_dir = f"{PROJECTUSER_PATH}/wandb"
-    os.environ["WANDB_DIR"] = os.path.abspath(base_dir)
     args = parse_args_sweep()
     sweep_id = args.sweep_id
-    wandb.agent(sweep_id, function=main, count=12, project="MasterThesis")
+    wandb.agent(sweep_id, function=main, count=6, project="MasterThesis")
     wandb.finish()
