@@ -18,10 +18,23 @@ from utils.helpers_testing import test_epoch
 from utils.metrics import harmonic_mean_score
 from models.model_helpers import count_parameters
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 def main():
+    # Configure the base directory for wandb logs
+    base_dir = "/mydata/studentanya/anya/wandb"
+    
+    # Ensure the directory exists and is writable
+    wandb_dir = Path(base_dir)
+    if not wandb_dir.exists():
+        wandb_dir.mkdir(parents=True, exist_ok=True)
+    
+    if not os.access(wandb_dir, os.W_OK):
+        print(f"Error: The directory {wandb_dir} is not writable.")
+        sys.exit(1)
+
     wandb.init(
-        dir="/mydata/studentanya/anya/wandb/",
+        dir=str(wandb_dir),
         notes="ELECTS with different backbone models.",
         tags=["ELECTS", "earlyrnn", "trials", "sweep"],
     )
