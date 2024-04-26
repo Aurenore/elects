@@ -73,7 +73,7 @@ class EarlyRNN(nn.Module):
         # time of stopping
         t_stop = first_stops.long().argmax(1) # get the index of the first stop
 
-        if self.left_padding and len(kwargs) > 0:
+        if self.left_padding and (len(kwargs) > 0):
             extra_padding = kwargs.get("extra_padding", 0)
             t_stop -= extra_padding
 
@@ -86,6 +86,7 @@ class EarlyRNN(nn.Module):
         return logprobabilities, deltas, predictions_at_t_stop, t_stop
     
     def initialize_model(self, backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size):
+        self.backbone_model_name = backbone_model
         self.backbone = get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size)
         
 

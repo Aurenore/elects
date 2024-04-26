@@ -27,6 +27,13 @@ def main():
         tags=["ELECTS", "earlyrnn", "trials", "sweep"],
     )
     config = wandb.config
+    # only use extra padding if tempcnn
+    if config.backbonemodel == "LSTM":
+        config.extra_padding_list = [0]
+        # update wandb config
+        wandb.config.update({"extra_padding_list": config.extra_padding_list})
+        
+    
     # ----------------------------- LOAD DATASET -----------------------------
 
     if config.dataset == "bavariancrops":
@@ -35,7 +42,7 @@ def main():
         input_dim = 13
         class_weights = None
         train_ds = BavarianCrops(root=dataroot,partition="train", sequencelength=config.sequencelength)
-        test_ds = BavarianCrops(root=dataroot,partition="valid", sequencelength=config.sequencelength)
+        test_ds = BavarianCrops(root=dataroot,partition=config.validation_set, sequencelength=config.sequencelength)
         class_names = test_ds.classes
     elif config.dataset == "unitedstates":
         config.dataroot = "/data/modiscdl/"
@@ -44,7 +51,7 @@ def main():
         nclasses = 8
         input_dim = 1
         train_ds = ModisCDL(root=dataroot,partition="train", sequencelength=config.sequencelength)
-        test_ds = ModisCDL(root=dataroot,partition="valid", sequencelength=config.sequencelength)
+        test_ds = ModisCDL(root=dataroot,partition=config.validation_set, sequencelength=config.sequencelength)
     elif config.dataset == "breizhcrops":
         dataroot = os.path.join(config.dataroot,"breizhcrops")
         nclasses = 9
@@ -53,7 +60,7 @@ def main():
         length_sorted_doy_dict_test = create_sorted_doys_dict_test(doys_dict_test)
         print("get train and validation data...")
         train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=config.sequencelength)
-        test_ds = BreizhCrops(root=dataroot,partition="valid", sequencelength=config.sequencelength)
+        test_ds = BreizhCrops(root=dataroot,partition=config.validation_set, sequencelength=config.sequencelength)
         class_names = test_ds.ds.classname
         print("class names:", class_names)
     elif config.dataset in ["ghana"]:
