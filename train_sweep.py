@@ -129,10 +129,10 @@ def main():
                                   lr=config.learning_rate, weight_decay=config.weight_decay)
 
     if config.loss_weight == "balanced":
-        class_weights = train_ds.get_class_weights().to(args.device)
+        class_weights = train_ds.get_class_weights().to(config.device)
     else: 
         class_weights = None
-    criterion = EarlyRewardLoss(alpha=args.alpha, epsilon=args.epsilon, weight=class_weights)
+    criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
 
     if config.resume and os.path.exists(config.snapshot):
         model.load_state_dict(torch.load(config.snapshot, map_location=config.device))
