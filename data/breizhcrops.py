@@ -20,6 +20,7 @@ class BreizhCrops(Dataset):
 
         self.sequencelength = sequencelength
         self.return_id = return_id
+        self.class_weights = None
 
     def __len__(self):
         return len(self.ds)
@@ -65,10 +66,24 @@ class BreizhCrops(Dataset):
         else:
             sequence_length = np.array(self.ds.index['sequencelength'].values)
         return np.array(sequence_length)
+    
+    def get_class_weights(self):
+        """
+        Returns the class weights of the dataset
+        The class with the smallest count will have weight 1, others will have a weight < 1
+        """
+        if self.class_weights is None:
+            class_counts = torch.zeros(len(LABELS_NAMES))
+            for i in range(len(self.ds)):
+                _, y, _ = self.ds[i]
+                class_counts[y] += 1
+            min_class_count = class_counts.min()
+            class_weights = min_class_count / class_counts 
+            self.class_weights = class_weights
+        return self.class_weights
 
 
 import os
-
 import geopandas as gpd
 import h5py
 import numpy as np

@@ -6,7 +6,7 @@ DATA="breizhcrops"
 
 sweep_configuration = {
     "method": "random",
-    "name": "sweep_left_right_padding",
+    "name": "sweep_class_weights",
     "metric": {"goal": "maximize", "name": "harmonic_mean"},
     "parameters": {
         "backbonemodel": {"value": "TempCNN"},
@@ -25,6 +25,7 @@ sweep_configuration = {
         "dataroot": {"value": f"{PROJECTUSER_PATH}/elects_data"},
         "snapshot": {"value": f"{PROJECTUSER_PATH}/elects_snapshots/{DATA}/model.pth"},
         "left_padding": {"values": [True, False]},
+        "loss_weight": {"values": [None, "balanced"]},
         "resume": {"value": False},
     },
 }

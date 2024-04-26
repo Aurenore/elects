@@ -128,7 +128,11 @@ def main():
     optimizer = torch.optim.AdamW([{'params': no_decay, 'weight_decay': 0, "lr": config.learning_rate}, {'params': decay}],
                                   lr=config.learning_rate, weight_decay=config.weight_decay)
 
-    criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon)
+    if config.loss_weight == "balanced":
+        class_weights = train_ds.get_class_weights().to(args.device)
+    else: 
+        class_weights = None
+    criterion = EarlyRewardLoss(alpha=args.alpha, epsilon=args.epsilon, weight=class_weights)
 
     if config.resume and os.path.exists(config.snapshot):
         model.load_state_dict(torch.load(config.snapshot, map_location=config.device))
