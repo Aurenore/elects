@@ -255,5 +255,5 @@ def main():
 if __name__ == '__main__':
     args = parse_args_sweep()
     sweep_id = args.sweep_id
-    wandb.agent(sweep_id, function=main, count=6, project="MasterThesis")
+    wandb.agent(sweep_id, function=main, count=args.count, project="MasterThesis")
     wandb.finish()

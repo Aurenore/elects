@@ -51,6 +51,7 @@ def parse_args():
 def parse_args_sweep():    
     parser = argparse.ArgumentParser(description='Run ELECTS Early Classification training with sweep id.')
     parser.add_argument('--sweep-id', type=str, help="sweep id")
+    parser.add_argument('--count', type=int, default=1, help="number of runs to execute per agent")
     args = parser.parse_args()
     return args
 
