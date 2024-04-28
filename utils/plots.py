@@ -76,3 +76,21 @@ def plot_boxplot(labels, t_stops, fig, ax, label_names: list=LABELS_NAMES, tmin=
     fig.tight_layout()
     return fig, ax
 
+
+def plot_spectral_bands(idx, test_ds, doys_dict_test, class_names, fig, ax, palette=PALETTE):
+    doys_months = [datetime.datetime(2017,m,1).timetuple().tm_yday for m in range(1,13)]
+    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    X, y, id_ = test_ds[idx]  # Ensure test_ds is accessible and contains the expected data structure
+    # Ensure doys_dict_test and class_names are accessible and contain the expected data structures
+    for band_idx, band_data in enumerate(X.T):  # Assuming X is structured with bands along columns
+        ax.plot(doys_dict_test[id_], band_data[:len(doys_dict_test[id_])], color=palette[band_idx % len(palette)])
+    
+    ax.legend(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B10', 'B11', 'B12',
+               'QA10', 'QA20', 'QA60', 'doa'])
+    ax.grid()
+    ax.set_xticks(doys_months)
+    ax.set_xticklabels(months, ha="left")
+    ax.set_xlabel("Day of year")
+    print(f"Sample {id_} has label {class_names[y[0]]}")  # Ensure class_names is accessible
+    fig.tight_layout()
+    return fig, ax
