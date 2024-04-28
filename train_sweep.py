@@ -22,6 +22,7 @@ from models.model_helpers import count_parameters
 import matplotlib.pyplot as plt
 
 def main():
+    # ----------------------------- CONFIGURATION -----------------------------
     wandb.init(
         notes="ELECTS with different backbone models.",
         tags=["ELECTS", "earlyrnn", "trials", "sweep"],
@@ -33,7 +34,9 @@ def main():
         # update wandb config
         wandb.config.update({"extra_padding_list": config.extra_padding_list})
         
-    
+    # check if config.validation_set is set
+    if not hasattr(config, "validation_set"):
+        config.validation_set = "valid"
     # ----------------------------- LOAD DATASET -----------------------------
 
     if config.dataset == "bavariancrops":
