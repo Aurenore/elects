@@ -33,6 +33,7 @@ def main():
         config.extra_padding_list = [0]
         # update wandb config
         wandb.config.update({"extra_padding_list": config.extra_padding_list})
+        print(f"Since LSTM is used, extra padding is set to {config.extra_padding_list}")
         
     # check if config.validation_set is set
     if not hasattr(config, "validation_set"):
