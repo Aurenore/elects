@@ -2,7 +2,7 @@ import sys
 import os 
 os.environ['MPLCONFIGDIR'] = '/myhome'
 from sweep_init import PROJECTUSER_PATH
-os.environ["WANDB_DIR"] = os.path.abspath(f"{PROJECTUSER_PATH}/wandb")
+os.environ["WANDB_DIR"] = '/myhome'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
 from torch.utils.data import DataLoader
