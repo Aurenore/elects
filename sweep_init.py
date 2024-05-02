@@ -3,10 +3,10 @@ DATA="breizhcrops"
 
 sweep_configuration = {
     "method": "random",
-    "name": "sweep_valid_or_eval_breizhcrops",
+    "name": "sweep_balanced_left_right_padding",
     "metric": {"goal": "maximize", "name": "harmonic_mean"},
     "parameters": {
-        "backbonemodel": {"values": ["TempCNN", "LSTM"]},
+        "backbonemodel": {"value": "TempCNN"},
         "dataset": {"value": DATA},
         "alpha": {"value": 0.5},
         "epsilon": {"value": 10},
@@ -17,13 +17,13 @@ sweep_configuration = {
         "epochs": {"value": 100},
         "sequencelength": {"value": 70},
         "extra_padding_list": {"value": [50, 40, 30, 20, 10, 0]},
-        "hidden_dims": {"value": 64}, #{"values": [16, 32, 64]},
+        "hidden_dims": {"values": [16, 32, 64]}, #{"value": 64}, #
         "batchsize": {"value": 256},
         "dataroot": {"value": f"{PROJECTUSER_PATH}/elects_data"},
         "snapshot": {"value": f"{PROJECTUSER_PATH}/elects_snapshots/{DATA}/model.pth"},
-        "left_padding": {"value": False}, # {"values": [True, False]},
-        "loss_weight": {"value": "balanced"}, #{"values": [None, "balanced"]},
+        "left_padding": {"values": [True, False]}, # {"value": False}, # 
+        "loss_weight": {"values": [None, "balanced"]}, # {"value": "balanced"}, #
         "resume": {"value": False},
-        "validation_set": {"values": ["valid", "eval"]},
+        "validation_set": {"value": "valid"}, #{"values": ["valid", "eval"]}
     },
 }
