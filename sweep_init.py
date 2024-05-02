@@ -2,7 +2,7 @@ PROJECTUSER_PATH="/mydata/studentanya/anya"
 DATA="breizhcrops"
 
 sweep_configuration = {
-    "method": "random",
+    "method": "grid",
     "name": "sweep_balanced_left_right_padding",
     "metric": {"goal": "maximize", "name": "harmonic_mean"},
     "parameters": {
