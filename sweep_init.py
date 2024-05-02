@@ -3,7 +3,7 @@ DATA="breizhcrops"
 
 sweep_configuration = {
     "method": "random",
-    "name": "sweep_valid_or_eval_6",
+    "name": "sweep_valid_or_eval_breizhcrops",
     "metric": {"goal": "maximize", "name": "harmonic_mean"},
     "parameters": {
         "backbonemodel": {"values": ["TempCNN", "LSTM"]},
