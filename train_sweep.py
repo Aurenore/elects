@@ -1,7 +1,7 @@
 import sys
 import os 
 os.environ['MPLCONFIGDIR'] = '/myhome'
-from sweep_init import PROJECTUSER_PATH
+from sweep_init import PROJECTUSER_PATH, sweep_configuration
 os.environ["WANDB_DIR"] = '/myhome'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
@@ -265,6 +265,6 @@ def main():
 
 if __name__ == '__main__':
     args = parse_args_sweep()
-    sweep_id = args.sweep_id
+    sweep_id = wandb.sweep(sweep=sweep_configuration, project="MasterThesis")
     wandb.agent(sweep_id, function=main, count=args.count, project="MasterThesis")
     wandb.finish()

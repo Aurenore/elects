@@ -1,12 +1,9 @@
-import wandb
-wandb.login()
-
 PROJECTUSER_PATH="/mydata/studentanya/anya"
 DATA="breizhcrops"
 
 sweep_configuration = {
-    "method": "grid",
-    "name": "sweep_valid_or_eval",
+    "method": "random",
+    "name": "sweep_valid_or_eval_6",
     "metric": {"goal": "maximize", "name": "harmonic_mean"},
     "parameters": {
         "backbonemodel": {"values": ["TempCNN", "LSTM"]},
@@ -30,5 +27,3 @@ sweep_configuration = {
         "validation_set": {"values": ["valid", "eval"]},
     },
 }
-
-sweep_id = wandb.sweep(sweep=sweep_configuration, project="MasterThesis")

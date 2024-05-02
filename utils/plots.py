@@ -6,6 +6,8 @@ import datetime
 import seaborn as sns
 import warnings
 PALETTE=sns.color_palette("colorblind")
+SPECTRAL_BANDS = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B10', 'B11', 'B12',
+               'QA10', 'QA20', 'QA60', 'doa']
 
 
 def extract_labels(dataset: Dataset):
@@ -85,8 +87,7 @@ def plot_spectral_bands(idx, test_ds, doys_dict_test, class_names, fig, ax, pale
     for band_idx, band_data in enumerate(X.T):  # Assuming X is structured with bands along columns
         ax.plot(doys_dict_test[id_], band_data[:len(doys_dict_test[id_])], color=palette[band_idx % len(palette)])
     
-    ax.legend(['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B10', 'B11', 'B12',
-               'QA10', 'QA20', 'QA60', 'doa'])
+    ax.legend(SPECTRAL_BANDS)
     ax.grid()
     ax.set_xticks(doys_months)
     ax.set_xticklabels(months, ha="left")
