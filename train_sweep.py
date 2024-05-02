@@ -1,7 +1,7 @@
 import sys
 import os 
 os.environ['MPLCONFIGDIR'] = '/myhome'
-from sweep_init import PROJECTUSER_PATH, sweep_configuration
+from sweeps.sweep_valid_eval import sweep_configuration
 os.environ["WANDB_DIR"] = '/myhome'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
