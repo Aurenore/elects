@@ -11,10 +11,6 @@ from models.TempCNN import TempCNN
 class EarlyRNN(nn.Module):
     def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, kernel_size:int=7, left_padding:bool=False):
         super(EarlyRNN, self).__init__()
-        # padding layer, for certain models that require padding
-        self.left_padding = left_padding
-        self.padding = Padding(left_padding=left_padding)
-
         # input transformations
         self.intransforms = nn.Sequential(
             nn.LayerNorm(input_dim), # normalization over D-dimension. T-dimension is untouched
@@ -24,12 +20,18 @@ class EarlyRNN(nn.Module):
         # backbone model 
         self.initialize_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size)
 
+        # padding layer, for certain models that require padding
+        if self.incremental_evaluation:
+            self.left_padding = left_padding
+            self.padding = Padding(left_padding=left_padding)
+
         # Heads
         self.classification_head = ClassificationHead(hidden_dims, nclasses)
         self.stopping_decision_head = DecisionHead(hidden_dims)
 
     def forward(self, x, **kwargs):
-        x = self.padding(x, **kwargs)
+        if self.incremental_evaluation:
+            x = self.padding(x, **kwargs)
         x = self.intransforms(x)
         output_tupple = self.backbone(x)
         if type(output_tupple) == tuple:
@@ -44,6 +46,7 @@ class EarlyRNN(nn.Module):
     @torch.no_grad()
     def predict(self, x, **kwargs):
         logprobabilities, deltas = self.forward(x, **kwargs)
+        nonzero_seqlengths = (x[:,:,0] != 0).sum(1) # get the length of the sequence, excluding the padding
 
         def sample_stop_decision(delta):
             dist = torch.stack([1 - delta, delta], dim=1)
@@ -73,9 +76,17 @@ class EarlyRNN(nn.Module):
         # time of stopping
         t_stop = first_stops.long().argmax(1) # get the index of the first stop
 
-        if self.left_padding and (len(kwargs) > 0):
+        if self.incremental_evaluation and (len(kwargs) > 0):
             extra_padding = kwargs.get("extra_padding", 0)
-            t_stop -= extra_padding
+                
+            if self.left_padding:
+                nonzero_seqlengths -= extra_padding
+                t_stop -= extra_padding
+            else:
+                # non-zero sequence lengths is the min between nonzero_seqlengths and sequencelength - padding 
+                nonzero_seqlengths = torch.min(nonzero_seqlengths, torch.tensor(sequencelength - extra_padding, device=x.device))
+            # for t_stop smaller than nonzero_seqlengths, set to nonzero_seqlengths
+            t_stop = torch.where(t_stop < nonzero_seqlengths, nonzero_seqlengths, t_stop)
 
         # all predictions
         predictions = logprobabilities.argmax(-1)
@@ -86,7 +97,12 @@ class EarlyRNN(nn.Module):
         return logprobabilities, deltas, predictions_at_t_stop, t_stop
     
     def initialize_model(self, backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size):
+        self.sequence_length = sequencelength
         self.backbone_model_name = backbone_model
+        if self.backbone_model_name == "TempCNN":
+            self.incremental_evaluation = True
+        else: 
+            self.incremental_evaluation = False
         self.backbone = get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size)
         
 
