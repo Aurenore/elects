@@ -3,12 +3,12 @@ DATA="breizhcrops"
 
 sweep_configuration = {
     "method": "random",
-    "name": "sweep_balanced_left_right_padding_alpha",
+    "name": "sweep_balanced_left_right_padding",
     "metric": {"goal": "maximize", "name": "harmonic_mean"},
     "parameters": {
         "backbonemodel": {"value": "TempCNN"},
         "dataset": {"value": DATA},
-        "alpha": {"min": 0.1, "max": 0.9, "distribution": "uniform"},
+        "alpha": {"value": 0.5}, # {"min": 0.1, "max": 0.9, "distribution": "uniform"},
         "epsilon": {"value": 10},
         "learning_rate": {"value": 1e-3},
         "weight_decay": {"value": 0},
