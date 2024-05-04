@@ -1,6 +1,9 @@
-import os 
-PROJECTUSER_PATH="/mydata/studentanya/anya"
-DATA="breizhcrops"
+# load DATA and PROJECTUSER_PATH from config.yaml
+import yaml
+with open("config.yaml", "r") as ymlfile:
+    cfg = yaml.safe_load(ymlfile)
+DATA = cfg["DATA"]
+PROJECTUSER_PATH = cfg["PROJECTUSER_PATH"]
 
 sweep_configuration = {
     "method": "random",
@@ -18,12 +21,12 @@ sweep_configuration = {
         "epochs": {"value": 100},
         "sequencelength": {"value": 70},
         "extra_padding_list": {"value": [50, 40, 30, 20, 10, 0]},
-        "hidden_dims": {"values": [16, 32, 64]}, #{"value": 64}, #
+        "hidden_dims": {"value": 64}, 
         "batchsize": {"value": 256},
         "dataroot": {"value": f"{PROJECTUSER_PATH}/elects_data"},
         "snapshot": {"value": f"{PROJECTUSER_PATH}/elects_snapshots/{DATA}/model.pth"},
-        "left_padding": {"value": False}, # 
-        "loss_weight": {"value": None}, #
+        "left_padding": {"value": False}, 
+        "loss_weight": {"value": None}, 
         "resume": {"value": False},
         "validation_set": {"values": ["valid", "eval"]}
     },

@@ -1,8 +1,8 @@
 import sys
 import os 
-os.environ['MPLCONFIGDIR'] = '/myhome'
+os.environ['MPLCONFIGDIR'] = "$HOME"
 from sweeps.sweep_valid_eval import sweep_configuration
-os.environ["WANDB_DIR"] = '/myhome'
+os.environ["WANDB_DIR"] = '$HOME/wandb'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
 from torch.utils.data import DataLoader
@@ -25,7 +25,7 @@ def main():
     # ----------------------------- CONFIGURATION -----------------------------
     wandb.init(
         notes="ELECTS with different backbone models.",
-        tags=["ELECTS", "earlyrnn", "trials", "sweep"],
+        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp"],
     )
     config = wandb.config
     # only use extra padding if tempcnn
