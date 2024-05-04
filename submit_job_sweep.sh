@@ -48,4 +48,4 @@ runai submit $jobname \
   --working-dir $TARGET_DIRECTORY_TO_CLONE/elects \
   --backoff-limit 1 \
   --git-sync source=$REPO,branch=$BRANCH_NAME,rev=$REVISION,username=$USER,password=$PASSWORD,target=$TARGET_DIRECTORY_TO_CLONE \
-  -- python train_sweep.py --count 12
+  -- python train_sweep.py --count 24
