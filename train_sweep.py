@@ -64,8 +64,8 @@ def main():
         doys_dict_test = get_doys_dict_test(dataroot=os.path.join(config.dataroot,config.dataset))
         length_sorted_doy_dict_test = create_sorted_doys_dict_test(doys_dict_test)
         print("get train and validation data...")
-        train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=config.sequencelength)
-        test_ds = BreizhCrops(root=dataroot,partition=config.validation_set, sequencelength=config.sequencelength)
+        train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=config.sequencelength, corrected=config.corrected)
+        test_ds = BreizhCrops(root=dataroot,partition=config.validation_set, sequencelength=config.sequencelength, corrected=config.corrected)
         class_names = test_ds.ds.classname
         print("class names:", class_names)
     elif config.dataset in ["ghana"]:
@@ -116,12 +116,12 @@ def main():
         test_ds,
         batch_size=config.batchsize)
     # ----------------------------- VISUALIZATION: label distribution -----------------------------
-    # datasets = [train_ds, test_ds]
-    # sets_labels = ["Train", "Validation"]
-    # fig, ax = plt.subplots(figsize=(15, 7))
-    # fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
-    # wandb.log({"label_distribution": wandb.Image(fig)})
-    # plt.close(fig)
+    datasets = [train_ds, test_ds]
+    sets_labels = ["Train", "Validation"]
+    fig, ax = plt.subplots(figsize=(15, 7))
+    fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
+    wandb.log({"label_distribution": wandb.Image(fig)})
+    plt.close(fig)
         
     # ----------------------------- SET UP MODEL -----------------------------
     model = EarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, left_padding=config.left_padding).to(config.device)
