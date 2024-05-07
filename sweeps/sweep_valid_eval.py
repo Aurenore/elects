@@ -1,9 +1,11 @@
-# load DATA and PROJECTUSER_PATH from config.yaml
+import wandb
+wandb.login()
 import yaml
 with open("config.yaml", "r") as ymlfile:
     cfg = yaml.safe_load(ymlfile)
 DATA = cfg["DATA"]
 PROJECTUSER_PATH = cfg["PROJECTUSER_PATH"]
+import torch
 
 sweep_configuration = {
     "method": "random",
@@ -17,7 +19,7 @@ sweep_configuration = {
         "learning_rate": {"value": 1e-3},
         "weight_decay": {"value": 0},
         "patience": {"value": 30},
-        "device": {"value": "cuda"},
+        "device": {"value": "cuda" if torch.cuda.is_available() else "cpu"},
         "epochs": {"value": 100},
         "sequencelength": {"value": 70},
         "extra_padding_list": {"value": [50, 40, 30, 20, 10, 0]},
@@ -31,3 +33,5 @@ sweep_configuration = {
         "validation_set": {"values": ["valid", "eval"]}
     },
 }
+
+wandb.sweep(sweep=sweep_configuration, project="MasterThesis")

@@ -8,6 +8,7 @@ def get_doys_dict_test(dataroot:str, npydoy: str='breizhcrops_frh04_2017_doys.np
     if not os.path.exists(filepath):
         url = "https://elects.s3.eu-central-1.amazonaws.com/"+npydoy
         response = requests.get(url)
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, 'wb') as f:
             f.write(response.content)
     doys_dict = np.load(filepath, allow_pickle=True).flat[0]

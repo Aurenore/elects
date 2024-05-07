@@ -1,8 +1,8 @@
 import sys
 import os 
-os.environ['MPLCONFIGDIR'] = "$HOME"
+#os.environ['MPLCONFIGDIR'] = "$HOME"
 from sweeps.sweep_valid_eval import sweep_configuration
-os.environ["WANDB_DIR"] = '$HOME/wandb'
+#os.environ["WANDB_DIR"] = os.path.join(os.path.dirname(__file__), "..", "wandb")
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
 from torch.utils.data import DataLoader
@@ -30,10 +30,11 @@ def main():
     config = wandb.config
     # only use extra padding if tempcnn
     if config.backbonemodel == "LSTM":
-        config.extra_padding_list = [0]
-        # update wandb config
-        wandb.config.update({"extra_padding_list": config.extra_padding_list})
-        print(f"Since LSTM is used, extra padding is set to {config.extra_padding_list}")
+        extra_padding_list = [0]
+        print(f"Since LSTM is used, extra padding is set to {extra_padding_list}")
+    else:
+        extra_padding_list = config.extra_padding_list
+    
         
     # check if config.validation_set is set
     if not hasattr(config, "validation_set"):
@@ -165,8 +166,8 @@ def main():
     print("starting training...")
     with tqdm(range(start_epoch, config.epochs + 1)) as pbar:
         for epoch in pbar:
-            trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, extra_padding_list=config.extra_padding_list)
-            testloss, stats = test_epoch(model, testdataloader, criterion, config.device, extra_padding_list=config.extra_padding_list, return_id=test_ds.return_id)
+            trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, extra_padding_list=extra_padding_list)
+            testloss, stats = test_epoch(model, testdataloader, criterion, config.device, extra_padding_list=extra_padding_list, return_id=test_ds.return_id)
 
             # statistic logging and visualization...
             precision, recall, fscore, support = sklearn.metrics.precision_recall_fscore_support(
@@ -262,9 +263,9 @@ def main():
                     break
 
 
+    wandb.finish()
+
+
 
 if __name__ == '__main__':
-    args = parse_args_sweep()
-    sweep_id = wandb.sweep(sweep=sweep_configuration, project="MasterThesis")
-    wandb.agent(sweep_id, function=main, count=args.count, project="MasterThesis")
-    wandb.finish()
+    main()
