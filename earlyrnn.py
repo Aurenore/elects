@@ -9,7 +9,7 @@ from models.TempCNN import TempCNN
 
 
 class EarlyRNN(nn.Module):
-    def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, kernel_size:int=7, left_padding:bool=False):
+    def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, kernel_size:int=7, left_padding:bool=False, decision_head: str="default"):
         super(EarlyRNN, self).__init__()
         # input transformations
         self.intransforms = nn.Sequential(
@@ -27,7 +27,12 @@ class EarlyRNN(nn.Module):
 
         # Heads
         self.classification_head = ClassificationHead(hidden_dims, nclasses)
-        self.stopping_decision_head = DecisionHead(hidden_dims)
+        if decision_head == "default":
+            self.stopping_decision_head = DecisionHead(hidden_dims)
+        elif decision_head == "day":
+            self.stopping_decision_head = DecisionHeadDay(hidden_dims)
+        else:
+            self.stopping_decision_head = DecisionHead(hidden_dims)
 
     def forward(self, x, **kwargs):
         if self.incremental_evaluation:
@@ -188,6 +193,22 @@ class DecisionHead(torch.nn.Module):
     def forward(self, x):
         return self.projection(x).squeeze(2)
 
+class DecisionHeadDay(torch.nn.Module):
+    
+    def __init__(self, hidden_dims) -> None:
+        super(DecisionHeadDay, self).__init__()
+        self.projection = nn.Sequential(
+            nn.Linear(hidden_dims, 1, bias=True),
+            nn.Sigmoid()
+        )
+        # initialize bias to predict late in first epochs
+        torch.nn.init.normal_(self.projection[0].bias, mean=1e2, std=1e-1)
+
+    def forward(self, x):
+        x = self.projection(x).squeeze(2)
+        x = x*364
+        return x
+        
 
 if __name__ == "__main__":
     model = EarlyRNN()
