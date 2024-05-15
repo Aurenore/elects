@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
 from earlyrnn import EarlyRNN
 import torch
-from loss import EarlyRewardLoss
+from utils.losses.early_reward_loss import EarlyRewardLoss
 import pandas as pd
 from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times
 from utils.doy import get_doys_dict_test, get_doy_stop

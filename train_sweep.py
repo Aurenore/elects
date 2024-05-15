@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from earlyrnn import EarlyRNN
 import torch
 from tqdm import tqdm
-from loss import EarlyRewardLoss
+from utils.losses.early_reward_loss import EarlyRewardLoss
 import sklearn.metrics
 import pandas as pd
 import wandb
