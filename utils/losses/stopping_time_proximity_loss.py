@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from utils.losses.early_reward_loss import probability_correct_class
 
-class StoppingTimeProximityCost(nn.Module):
+class StoppingTimeProximityLoss(nn.Module):
     def __init__(self, alphas=[1/3, 1/3, 1/3], weight=None):
         """
         INPUT: 
@@ -11,7 +11,7 @@ class StoppingTimeProximityCost(nn.Module):
         OUTPUT: 
         - None
         """
-        super(StoppingTimeProximityCost, self).__init__()
+        super(StoppingTimeProximityLoss, self).__init__()
 
         self.negative_log_likelihood = nn.NLLLoss(reduction="none", weight=weight)
         self.alphas = alphas

@@ -10,6 +10,7 @@ from earlyrnn import EarlyRNN
 import torch
 from tqdm import tqdm
 from utils.losses.early_reward_loss import EarlyRewardLoss
+from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss
 import sklearn.metrics
 import pandas as pd
 import wandb
@@ -25,7 +26,7 @@ def main():
     # ----------------------------- CONFIGURATION -----------------------------
     wandb.init(
         notes="ELECTS with different backbone models.",
-        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp"],
+        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp", "new cost function"],
     )
     config = wandb.config
     # only use extra padding if tempcnn
@@ -64,8 +65,8 @@ def main():
         doys_dict_test = get_doys_dict_test(dataroot=os.path.join(config.dataroot,config.dataset))
         length_sorted_doy_dict_test = create_sorted_doys_dict_test(doys_dict_test)
         print("get train and validation data...")
-        train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=config.sequencelength, corrected=config.corrected)
-        test_ds = BreizhCrops(root=dataroot,partition=config.validation_set, sequencelength=config.sequencelength, corrected=config.corrected)
+        train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=config.sequencelength, corrected=config.corrected, daily_timestamps=config.daily_timestamps, original_time_serie_lengths=config.original_time_serie_lengths)
+        test_ds = BreizhCrops(root=dataroot,partition=config.validation_set, sequencelength=config.sequencelength, corrected=config.corrected, daily_timestamps=config.daily_timestamps, original_time_serie_lengths=config.original_time_serie_lengths)
         class_names = test_ds.ds.classname
         print("class names:", class_names)
     elif config.dataset in ["ghana"]:
@@ -124,7 +125,7 @@ def main():
     plt.close(fig)
         
     # ----------------------------- SET UP MODEL -----------------------------
-    model = EarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, left_padding=config.left_padding).to(config.device)
+    model = EarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, left_padding=config.left_padding, decision_head=config.decision_head).to(config.device)
     wandb.config.update({"nb_parameters": count_parameters(model)})
 
     #optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)
@@ -144,7 +145,23 @@ def main():
         class_weights = train_ds.get_class_weights().to(config.device)
     else: 
         class_weights = None
-    criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
+
+    if config.loss == "early_reward":
+        criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
+    elif config.loss == "stopping_time_proximity":
+        A = config.A_stopping_time_proximity
+        B = config.B_stopping_time_proximity
+        alpha1 = A
+        alpha2 = B
+        alpha3 = 1-A-B
+        if alpha3 < 0:
+            alpha1 = 1 - alpha1
+            alpha2 = 1 - alpha2
+            alpha3 = -alpha3
+        criterion = StoppingTimeProximityLoss(alphas=[alpha1, alpha2, alpha3], weight=class_weights)
+    else: 
+        print(f"loss {config.loss} not recognized, loss set to default: early_reward")
+        criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
 
     if config.resume and os.path.exists(config.snapshot):
         model.load_state_dict(torch.load(config.snapshot, map_location=config.device))
