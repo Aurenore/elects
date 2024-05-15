@@ -7,19 +7,31 @@ LABELS_NAMES = ['barley', 'wheat', 'rapeseed', 'corn', 'sunflower', 'orchards',
        'nuts', 'perm. mead', 'temp. mead']
 
 class BreizhCrops(Dataset):
-    def __init__(self, partition="train", root="breizhcrops_dataset", sequencelength=70, year=2017, return_id=False):
+    def __init__(self, partition="train", root="breizhcrops_dataset", sequencelength=70, year=2017, return_id=False, corrected=False):
         assert partition in ["train", "valid", "eval"]
-        if partition == "train":
-            frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=True, year=year)
-            frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=True, year=year)
-            self.ds = torch.utils.data.ConcatDataset([frh01, frh02])
-        elif partition == "valid":
-            self.ds = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=True, year=year)
-        elif partition == "eval":
-            self.ds = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=True, year=year)
+        if not corrected:
+            if partition == "train":
+                frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                self.ds = torch.utils.data.ConcatDataset([frh01, frh02])
+            elif partition == "valid":
+                self.ds = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+            elif partition == "eval":
+                self.ds = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+        else:
+            # because of the corrected flag, we need to load the datasets differently for the sizes to be reasonable
+            if partition == "train":
+                self.ds = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+            elif partition == "valid":
+                self.ds = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+            elif partition == "eval":
+                frh03 = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                frh04 = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                self.ds = torch.utils.data.ConcatDataset([frh03, frh04])
 
         self.sequencelength = sequencelength
         self.return_id = return_id
+        self.class_weights = None
 
     def __len__(self):
         return len(self.ds)
@@ -65,10 +77,24 @@ class BreizhCrops(Dataset):
         else:
             sequence_length = np.array(self.ds.index['sequencelength'].values)
         return np.array(sequence_length)
+    
+    def get_class_weights(self):
+        """
+        Returns the class weights of the dataset
+        The class with the smallest count will have weight 1, others will have a weight < 1
+        """
+        if self.class_weights is None:
+            class_counts = torch.zeros(len(LABELS_NAMES))
+            for i in range(len(self.ds)):
+                _, y, _ = self.ds[i]
+                class_counts[y] += 1
+            min_class_count = class_counts.min()
+            class_weights = min_class_count / class_counts 
+            self.class_weights = class_weights
+        return self.class_weights
 
 
 import os
-
 import geopandas as gpd
 import h5py
 import numpy as np
@@ -108,7 +134,9 @@ class BzhBreizhCrops(Dataset):
                  verbose=False,
                  load_timeseries=True,
                  recompile_h5_from_csv=False,
-                 preload_ram=False):
+                 preload_ram=False,
+                 corrected=False,
+                 ):
         """
         :param region: dataset region. choose from "frh01", "frh02", "frh03", "frh04", "belle-ile"
         :param root: where the data will be stored. defaults to `./breizhcrops_dataset`
@@ -121,6 +149,7 @@ class BzhBreizhCrops(Dataset):
         :param bool load_timeseries: if False, no time series data will be loaded. Only index file and class initialization. Used mostly for tests
         :param bool recompile_h5_from_csv: downloads raw csv files and recompiles the h5 databases. Only required when dealing with new datasets
         :param bool preload_ram: loads all time series data in RAM at initialization. Can speed up training if data is stored on HDD.
+        :param bool corrected: if True, only time series with 51 or 102 length will be kept
         """
         assert year in [2017, 2018]
         assert level in ["L1C", "L2A"]
@@ -139,6 +168,7 @@ class BzhBreizhCrops(Dataset):
         self.verbose = verbose
         self.year = year
         self.level = level
+        self.corrected = corrected
 
         if verbose:
             print(f"Initializing BreizhCrops region {region}, year {year}, level {level}")
@@ -165,6 +195,13 @@ class BzhBreizhCrops(Dataset):
         if not h5_database_ok and not recompile_h5_from_csv and load_timeseries:
             self.download_h5_database()
 
+        if self.corrected and self.level=="L1C":
+            # create a file with only 51 and 102 length time series
+            df = pd.read_csv(self.indexfile, index_col=None)
+            df  = df[df["sequencelength"].isin([51, 102])]
+            self.indexfile = self.indexfile.replace(".csv", "_corrected.csv")
+            df.to_csv(self.indexfile, index=False)
+            
         self.index = pd.read_csv(self.indexfile, index_col=None)
         self.index = self.index.loc[self.index["CODE_CULTU"].isin(self.mapping.index)]
         if verbose:

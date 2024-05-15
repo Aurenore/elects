@@ -8,48 +8,16 @@ from earlyrnn import EarlyRNN
 import torch
 from tqdm import tqdm
 from loss import EarlyRewardLoss
-import numpy as np
 import sklearn.metrics
 import pandas as pd
-import argparse
-import os
 import wandb
-from utils.plots import plot_label_distribution_datasets, plot_boxplot
+from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times
+from utils.doy import get_doys_dict_test, get_doy_stop, create_sorted_doys_dict_test, get_approximated_doys_dict
+from utils.helpers_training import parse_args, train_epoch
+from utils.helpers_testing import test_epoch
+from utils.metrics import harmonic_mean_score
+from models.model_helpers import count_parameters
 import matplotlib.pyplot as plt
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description='Run ELECTS Early Classification training on the BavarianCrops dataset.')
-    parser.add_argument('--dataset', type=str, default="bavariancrops", choices=["bavariancrops","breizhcrops", "ghana", "southsudan","unitedstates"], help="dataset")
-    parser.add_argument('--alpha', type=float, default=0.5, help="trade-off parameter of earliness and accuracy (eq 6): "
-                                                                 "1=full weight on accuracy; 0=full weight on earliness")
-    parser.add_argument('--epsilon', type=float, default=10, help="additive smoothing parameter that helps the "
-                                                                  "model recover from too early classificaitons (eq 7)")
-    parser.add_argument('--learning-rate', type=float, default=1e-3, help="Optimizer learning rate")
-    parser.add_argument('--weight-decay', type=float, default=0, help="weight_decay")
-    parser.add_argument('--patience', type=int, default=30, help="Early stopping patience")
-    parser.add_argument('--device', type=str, default="cuda" if torch.cuda.is_available() else "cpu",
-                        choices=["cuda", "cpu"], help="'cuda' (GPU) or 'cpu' device to run the code. "
-                                                     "defaults to 'cuda' if GPU is available, otherwise 'cpu'")
-    parser.add_argument('--epochs', type=int, default=100, help="number of training epochs")
-    parser.add_argument('--sequencelength', type=int, default=70, help="sequencelength of the time series. If samples are shorter, "
-                                                                "they are zero-padded until this length; "
-                                                                "if samples are longer, they will be undersampled")
-    parser.add_argument('--batchsize', type=int, default=256, help="number of samples per batch")
-    parser.add_argument('--dataroot', type=str, default=os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data"), help="directory to download the "
-                                                                                 "BavarianCrops dataset (400MB)."
-                                                                                 "Defaults to home directory.")
-    parser.add_argument('--snapshot', type=str, default="snapshots/model.pth",
-                        help="pytorch state dict snapshot file")
-    parser.add_argument('--resume', action='store_true')
-
-
-    args = parser.parse_args()
-
-    if args.patience < 0:
-        args.patience = None
-
-    return args
 
 def main(args):
     # ----------------------------- LOAD DATASET -----------------------------
@@ -74,6 +42,9 @@ def main(args):
         dataroot = os.path.join(args.dataroot,"breizhcrops")
         nclasses = 9
         input_dim = 13
+        doys_dict_test = get_doys_dict_test(dataroot=os.path.join(args.dataroot,args.dataset))
+        length_sorted_doy_dict_test = create_sorted_doys_dict_test(doys_dict_test)
+        print("get train and validation data...")
         train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=args.sequencelength)
         test_ds = BreizhCrops(root=dataroot,partition="valid", sequencelength=args.sequencelength)
         class_names = test_ds.ds.classname
@@ -126,16 +97,16 @@ def main(args):
         test_ds,
         batch_size=args.batchsize)
     # ----------------------------- VISUALIZATION: label distribution -----------------------------
-    datasets = [train_ds, test_ds]
-    sets_labels = ["Train", "Validation"]
-    fig, ax = plt.subplots(figsize=(15, 7))
-    fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
-    wandb.log({"label_distribution": wandb.Image(fig)})
-    plt.close(fig)
+    # datasets = [train_ds, test_ds]
+    # sets_labels = ["Train", "Validation"]
+    # fig, ax = plt.subplots(figsize=(15, 7))
+    # fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
+    # wandb.log({"label_distribution": wandb.Image(fig)})
+    # plt.close(fig)
         
     # ----------------------------- SET UP MODEL -----------------------------
-    model = EarlyRNN(nclasses=nclasses, input_dim=input_dim).to(args.device)
-
+    model = EarlyRNN(args.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=args.sequencelength, hidden_dims=args.hidden_dims, left_padding=args.left_padding).to(args.device)
+    wandb.config.update({"nb_parameters": count_parameters(model)})
 
     #optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
 
@@ -172,8 +143,8 @@ def main(args):
     print("starting training...")
     with tqdm(range(start_epoch, args.epochs + 1)) as pbar:
         for epoch in pbar:
-            trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=args.device)
-            testloss, stats = test_epoch(model, testdataloader, criterion, args.device)
+            trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=args.device, extra_padding_list=args.extra_padding_list)
+            testloss, stats = test_epoch(model, testdataloader, criterion, args.device, extra_padding_list=args.extra_padding_list, return_id=test_ds.return_id)
 
             # statistic logging and visualization...
             precision, recall, fscore, support = sklearn.metrics.precision_recall_fscore_support(
@@ -187,6 +158,7 @@ def main(args):
             classification_loss = stats["classification_loss"].mean()
             earliness_reward = stats["earliness_reward"].mean()
             earliness = 1 - (stats["t_stop"].mean() / (args.sequencelength - 1))
+            harmonic_mean = harmonic_mean_score(accuracy, stats["classification_earliness"])
 
             # ----------------------------- LOGGING -----------------------------
             train_stats.append(
@@ -199,30 +171,39 @@ def main(args):
                     recall=recall,
                     fscore=fscore,
                     kappa=kappa,
-                    earliness=earliness,
+                    elects_earliness=earliness,
                     classification_loss=classification_loss,
-                    earliness_reward=earliness_reward
+                    earliness_reward=earliness_reward,
+                    classification_earliness=stats["classification_earliness"],
+                    harmonic_mean=harmonic_mean,
                 )
             )
-            fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
-            fig_boxplot, _ = plot_boxplot(stats["targets"][:, 0], stats["t_stop"][:, 0], fig_boxplot, ax_boxplot, class_names, tmin=0, tmax=args.sequencelength)
-
-            wandb.log({
-                "loss": {"trainloss": trainloss, "testloss": testloss},
-                "accuracy": accuracy,
-                "precision": precision,
-                "recall": recall,
-                "fscore": fscore,
-                "kappa": kappa,
-                "earliness": earliness,
-                "classification_loss": classification_loss,
-                "earliness_reward": earliness_reward,
-                "boxplot": wandb.Image(fig_boxplot),
-                "conf_mat" : wandb.plot.confusion_matrix(probs=None,
-                        y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
-                        class_names=class_names, title="Confusion Matrix")
-            })
-            plt.close(fig_boxplot)
+            dict_to_wandb = {
+                    "loss": {"trainloss": trainloss, "testloss": testloss},
+                    "accuracy": accuracy,
+                    "precision": precision,
+                    "recall": recall,
+                    "fscore": fscore,
+                    "kappa": kappa,
+                    "elects_earliness": earliness,
+                    "classification_loss": classification_loss,
+                    "earliness_reward": earliness_reward,
+                    "classification_earliness": stats["classification_earliness"],
+                    "harmonic_mean": harmonic_mean,
+                    "conf_mat" : wandb.plot.confusion_matrix(probs=None,
+                            y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
+                            class_names=class_names, title="Confusion Matrix")
+                }
+            if epoch % 10 == 1:
+                fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
+                doys_dict = get_approximated_doys_dict(stats["seqlengths"], length_sorted_doy_dict_test)
+                doys_stop = get_doy_stop(stats, doys_dict)
+                fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names)
+                dict_to_wandb["boxplot"] = wandb.Image(fig_boxplot)
+                plt.close(fig_boxplot)
+            
+            wandb.log(dict_to_wandb)
+            
 
             df = pd.DataFrame(train_stats).set_index("epoch")
 
@@ -234,8 +215,8 @@ def main(args):
                     torch.save(model.state_dict(), args.snapshot)
 
                     optimizer_snapshot = os.path.join(os.path.dirname(args.snapshot),
-                                                      os.path.basename(args.snapshot).replace(".pth", "_optimizer.pth")
-                                                      )
+                                                        os.path.basename(args.snapshot).replace(".pth", "_optimizer.pth")
+                                                        )
                     torch.save(optimizer.state_dict(), optimizer_snapshot)
                     wandb.log_artifact(args.snapshot, type="model")  
 
@@ -249,77 +230,29 @@ def main(args):
                         savemsg = ""
 
             pbar.set_description(f"epoch {epoch}: trainloss {trainloss:.2f}, testloss {testloss:.2f}, "
-                     f"accuracy {accuracy:.2f}, earliness {earliness:.2f}. "
-                     f"classification loss {classification_loss:.2f}, earliness reward {earliness_reward:.2f}. {savemsg}")
+                        f"accuracy {accuracy:.2f}, earliness {earliness:.2f}. "
+                        f"classification loss {classification_loss:.2f}, earliness reward {earliness_reward:.2f}, harmonic mean {harmonic_mean:.2f}. {savemsg}")
             
                 
             if args.patience is not None:
                 if not_improved > args.patience:
                     print(f"stopping training. testloss {testloss:.2f} did not improve in {args.patience} epochs.")
                     break
-        
-    # ----------------------------- SAVE FINAL MODEL -----------------------------
-    wandb.log_artifact(args.snapshot, type="model")
 
-
-def train_epoch(model, dataloader, optimizer, criterion, device):
-    losses = []
-    model.train()
-    for batch in dataloader:
-        optimizer.zero_grad()
-        X, y_true = batch
-        X, y_true = X.to(device), y_true.to(device)
-        log_class_probabilities, probability_stopping = model(X)
-
-        loss = criterion(log_class_probabilities, probability_stopping, y_true)
-
-        if not loss.isnan().any():
-            loss.backward()
-            optimizer.step()
-
-            losses.append(loss.cpu().detach().numpy())
-
-    return np.stack(losses).mean()
-
-
-def test_epoch(model, dataloader, criterion, device):
-    model.eval()
-
-    stats = []
-    losses = []
-    for batch in dataloader:
-        X, y_true = batch
-        X, y_true = X.to(device), y_true.to(device)
-
-        log_class_probabilities, probability_stopping, predictions_at_t_stop, t_stop = model.predict(X)
-        loss, stat = criterion(log_class_probabilities, probability_stopping, y_true, return_stats=True)
-
-        stat["loss"] = loss.cpu().detach().numpy()
-        stat["probability_stopping"] = probability_stopping.cpu().detach().numpy()
-        stat["class_probabilities"] = log_class_probabilities.exp().cpu().detach().numpy()
-        stat["predictions_at_t_stop"] = predictions_at_t_stop.unsqueeze(-1).cpu().detach().numpy()
-        stat["t_stop"] = t_stop.unsqueeze(-1).cpu().detach().numpy()
-        stat["targets"] = y_true.cpu().detach().numpy()
-
-        stats.append(stat)
-
-        losses.append(loss.cpu().detach().numpy())
-
-    # list of dicts to dict of lists
-    stats = {k: np.vstack([dic[k] for dic in stats]) for k in stats[0]}
-
-    return np.stack(losses).mean(), stats
 
 
 if __name__ == '__main__':
+    # use example: 
+    # python train.py --backbonemodel TempCNN --backbonemodel TempCNN --dataset breizhcrops --epochs 100 --hidden-dims 16 --sequencelength 70 --extra-padding-list 35 0
     args = parse_args()
+    tag_left_padding = "left padding" if args.left_padding else "right padding"
     wandb.init(
         dir="/mydata/studentanya/anya/wandb/",
-        project="ELECTS",
-        notes="first experimentations with ELECTS",
-        tags=["ELECTS", args.dataset],
-        # track hyperparameters and run metadata
+        project="MasterThesis",
+        notes="ELECTS with different backbone models.",
+        tags=["ELECTS", args.dataset, args.backbonemodel, "earlyrnn", "trials", tag_left_padding],
         config={
+        "backbonemodel": args.backbonemodel,
         "dataset": args.dataset,
         "alpha": args.alpha,
         "epsilon": args.epsilon,
@@ -329,9 +262,12 @@ if __name__ == '__main__':
         "device": args.device,
         "epochs": args.epochs,
         "sequencelength": args.sequencelength,
+        "extra_padding_list": args.extra_padding_list,  
+        "hidden_dims": args.hidden_dims,
         "batchsize": args.batchsize,
         "dataroot": args.dataroot,
         "snapshot": args.snapshot,
+        "left_padding": args.left_padding,
         "resume": args.resume,
         "architecture": "EarlyRNN",
         "optimizer": "AdamW",
