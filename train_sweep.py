@@ -4,9 +4,10 @@ import os
 from sweeps.sweep_valid_eval import sweep_configuration
 #os.environ["WANDB_DIR"] = os.path.join(os.path.dirname(__file__), "..", "wandb")
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
-from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
+from data import BreizhCrops
 from torch.utils.data import DataLoader
 from models.earlyrnn import EarlyRNN
+from models.daily_earlyrnn import DailyEarlyRNN
 import torch
 from tqdm import tqdm
 from utils.losses.early_reward_loss import EarlyRewardLoss
@@ -84,7 +85,10 @@ def main():
     plt.close(fig)
         
     # ----------------------------- SET UP MODEL -----------------------------
-    model = EarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, left_padding=config.left_padding, decision_head=config.decision_head).to(config.device)
+    if config.decision_head == "day":
+        model = DailyEarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims).to(config.device)
+    else:
+        model = EarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, left_padding=config.left_padding).to(config.device)
     wandb.config.update({"nb_parameters": count_parameters(model)})
 
     #optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay)

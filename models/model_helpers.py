@@ -1,5 +1,7 @@
+import torch
 import torch.nn as nn
-from models.TempCNN import TempCNN
+from models.backbone_models.TempCNN import TempCNN
+
 
 def count_parameters(model):
     """ Count the number of parameters in a model """
@@ -36,3 +38,15 @@ def get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn
         return model_info["class"](**model_info["config"])
     else:
         raise ValueError(f"Backbone model {backbone_model} is not implemented yet.")
+    
+
+def get_t_stop_from_daily_timestamps(timestamps_left):
+    # t_stop is the time at which the model stops. It is the first time the timestamps_left is strictly smaller than 1
+    batchsize, sequencelength = timestamps_left.shape
+    time_smaller_than_1 = (timestamps_left < 1).int()
+    if time_smaller_than_1.sum() == 0:
+        # then t_stop is set to the last time step
+        t_stop = torch.tensor(sequencelength - 1).repeat(batchsize)
+    else:
+        t_stop = torch.argmax(time_smaller_than_1, dim=1)
+    return t_stop

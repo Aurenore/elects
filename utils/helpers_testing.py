@@ -7,7 +7,7 @@ import numpy as np
 from utils.metrics import harmonic_mean_score
 import sklearn.metrics
 
-def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0], return_id:bool=False):
+def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0], return_id:bool=False, daily_timestamps:bool=False):
     model.eval()
 
     stats = []
@@ -33,7 +33,7 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
         dict_padding = {"extra_padding": extra_padding}
 
         # predict the sequence with the smallest padding
-        log_class_probabilities, probability_stopping, predictions_at_t_stop, t_stop = model.predict(X, **dict_padding)
+        log_class_probabilities, stopping_criteria, predictions_at_t_stop, t_stop = model.predict(X, **dict_padding)
             
         if len(extra_padding_list) > 1:
             # mask for sequences that are not predicted yet
@@ -43,7 +43,7 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
             while unpredicted_seq_mask.any() and i < len(extra_padding_list)-1:
                 extra_padding = extra_padding_list[i]
                 dict_padding = {"extra_padding": extra_padding}
-                log_class_probabilities_temp, probability_stopping_temp, predictions_at_t_stop_temp, t_stop_temp = model.predict(X, **dict_padding)
+                log_class_probabilities_temp, stopping_criteria_temp, predictions_at_t_stop_temp, t_stop_temp = model.predict(X, **dict_padding)
                 if model.left_padding:
                     seqlengths_temp = seqlengths - extra_padding
                 else:
@@ -54,14 +54,18 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
             
                 # update the metrics data with the mask of predicted sequences
                 log_class_probabilities = torch.where(~unpredicted_seq_mask.unsqueeze(1).unsqueeze(-1), log_class_probabilities_temp, log_class_probabilities)
-                probability_stopping = torch.where(~unpredicted_seq_mask.unsqueeze(1), probability_stopping_temp, probability_stopping)
+                stopping_criteria = torch.where(~unpredicted_seq_mask.unsqueeze(1), stopping_criteria_temp, stopping_criteria)
                 predictions_at_t_stop = torch.where(~unpredicted_seq_mask, predictions_at_t_stop_temp, predictions_at_t_stop)
                 t_stop = torch.where(~unpredicted_seq_mask, t_stop_temp, t_stop)
                 i+=1
 
-        loss, stat = criterion(log_class_probabilities, probability_stopping, y_true, return_stats=True)
+        loss, stat = criterion(log_class_probabilities, stopping_criteria, y_true, return_stats=True)
         stat["loss"] = loss.cpu().detach().numpy()
-        stat["probability_stopping"] = probability_stopping.cpu().detach().numpy()
+        # depending of the model, we define the probability of stopping or the timestamps left as the stopping criteria
+        if not daily_timestamps:
+            stat["probability_stopping"] = stopping_criteria.cpu().detach().numpy()
+        else: 
+            stat["timestamps_left"] = stopping_criteria.cpu().detach().numpy()
         stat["class_probabilities"] = log_class_probabilities.exp().cpu().detach().numpy()
         stat["predictions_at_t_stop"] = predictions_at_t_stop.unsqueeze(-1).cpu().detach().numpy()
         stat["t_stop"] = t_stop.unsqueeze(-1).cpu().detach().numpy()

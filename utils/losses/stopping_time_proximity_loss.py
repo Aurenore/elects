@@ -1,6 +1,7 @@
 import torch 
 from torch import nn
 from utils.losses.early_reward_loss import probability_correct_class
+from models.model_helpers import get_t_stop_from_daily_timestamps
 
 class StoppingTimeProximityLoss(nn.Module):
     def __init__(self, alphas=[1/3, 1/3, 1/3], weight=None):
@@ -34,7 +35,7 @@ class StoppingTimeProximityLoss(nn.Module):
         print("earliness_reward.shape: ", earliness_reward.shape)
 
         # time proximity reward 
-        proximity_reward = proximity_reward(log_class_probabilities, y_true, timestamps_left)
+        proximity_reward = get_proximity_reward(log_class_probabilities, y_true, timestamps_left)
 
         # total loss
         loss = self.alphas[0] * classification_loss - self.alphas[1] * earliness_reward - self.alphas[2] * proximity_reward
@@ -50,13 +51,12 @@ class StoppingTimeProximityLoss(nn.Module):
             return loss
         
 
-def proximity_reward(logprobabilities, targets, timestamps_left):
+def get_proximity_reward(logprobabilities, targets, timestamps_left):
     """
     """
     batchsize, sequencelength, nclasses = logprobabilities.shape
 
-    eye = torch.eye(nclasses).to(logprobabilities.device)
-    t_finals = get_t_final(timestamps_left) # shape (batchsize,)
+    t_finals = get_t_stop_from_daily_timestamps(timestamps_left) # shape (batchsize,)
 
     result = 0
 
@@ -85,15 +85,6 @@ def proximity_reward(logprobabilities, targets, timestamps_left):
 
     return result           
 
-
-def get_t_final(timestamples_left):
-    """
-    Get the final time of the sequence, which is the index of the first 0 in the timestamps_left tensor.
-    INPUT: timestamps_left: torch.Tensor of shape (N, T)
-    OUTPUT: torch.Tensor of shape (N,) with the final time of the sequence
-    """
-    t_final = torch.argmax(timestamples_left == 0, dim=1)
-    return t_final
 
 def sample_three_uniform_numbers():
     """

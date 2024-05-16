@@ -5,7 +5,7 @@ import torch.utils.data
 import os
 from torch.nn.modules.normalization import LayerNorm
 from models.backbone_models.TempCNN import TempCNN
-from models.model_helpers import get_backbone_model
+from models.model_helpers import get_backbone_model, get_t_stop_from_daily_timestamps
 from models.heads import ClassificationHead, DecisionHeadDay
 
 
@@ -45,8 +45,7 @@ class DailyEarlyRNN(nn.Module):
         logprobabilities, timestamps_left = self.forward(x, **kwargs)
         batchsize, sequencelength, nclasses = logprobabilities.shape
 
-        # t_stop is the time at which the model stops. It is the first time the timestamps_left is strictly smaller than 1
-        t_stop = torch.argmax(timestamps_left < 1, dim=1)
+        t_stop = get_t_stop_from_daily_timestamps(timestamps_left)
 
         # all predictions
         predictions = logprobabilities.argmax(-1)

@@ -65,9 +65,9 @@ def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_l
             X, y_true = batch
             X, y_true = X.to(device), y_true.to(device)
             dict_padding = {"extra_padding": extra_padding}
-            log_class_probabilities, probability_stopping = model(X, **dict_padding)
+            log_class_probabilities, stopping_criteria = model(X, **dict_padding)
 
-            loss = criterion(log_class_probabilities, probability_stopping, y_true)
+            loss = criterion(log_class_probabilities, stopping_criteria, y_true)
 
             if not loss.isnan().any():
                 loss.backward()
