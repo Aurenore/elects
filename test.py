@@ -3,7 +3,7 @@ import os
 os.environ['MPLCONFIGDIR'] = '/myhome'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
-from earlyrnn import EarlyRNN
+from models.earlyrnn import EarlyRNN
 import torch
 from utils.losses.early_reward_loss import EarlyRewardLoss
 import pandas as pd

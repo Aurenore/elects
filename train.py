@@ -4,7 +4,7 @@ os.environ['MPLCONFIGDIR'] = '/myhome'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
 from torch.utils.data import DataLoader
-from earlyrnn import EarlyRNN
+from models.earlyrnn import EarlyRNN
 import torch
 from tqdm import tqdm
 from utils.losses.early_reward_loss import EarlyRewardLoss

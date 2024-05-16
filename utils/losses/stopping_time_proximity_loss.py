@@ -94,3 +94,17 @@ def get_t_final(timestamples_left):
     """
     t_final = torch.argmax(timestamples_left == 0, dim=1)
     return t_final
+
+def sample_three_uniform_numbers():
+    """
+    Generate three random numbers that sum to 1, for parameters alphas in the loss function.
+    """
+    # Step 1: Generate three exponential random variables
+    exp_distribution = torch.distributions.Exponential(rate=1.0)
+    exp_samples = exp_distribution.sample((3,))
+    
+    # Step 2: Normalize the variables by their sum
+    total = exp_samples.sum()
+    uniform_samples = exp_samples / total
+    
+    return uniform_samples

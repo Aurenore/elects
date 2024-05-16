@@ -2,7 +2,7 @@ import sys
 sys.path.append("..")
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
-from earlyrnn import EarlyRNN
+from models.earlyrnn import EarlyRNN
 import torch
 import numpy as np
 

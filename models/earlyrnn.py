@@ -2,14 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
-import os
-#from models.EarlyClassificationModel import EarlyClassificationModel
-from torch.nn.modules.normalization import LayerNorm
-from models.TempCNN import TempCNN
+from models.model_helpers import get_backbone_model
+from models.heads import ClassificationHead, DecisionHead
 
 
 class EarlyRNN(nn.Module):
-    def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, kernel_size:int=7, left_padding:bool=False, decision_head: str="default"):
+    def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, kernel_size:int=7, left_padding:bool=False):
         super(EarlyRNN, self).__init__()
         # input transformations
         self.intransforms = nn.Sequential(
@@ -27,12 +25,7 @@ class EarlyRNN(nn.Module):
 
         # Heads
         self.classification_head = ClassificationHead(hidden_dims, nclasses)
-        if decision_head == "default":
-            self.stopping_decision_head = DecisionHead(hidden_dims)
-        elif decision_head == "day":
-            self.stopping_decision_head = DecisionHeadDay(hidden_dims)
-        else:
-            self.stopping_decision_head = DecisionHead(hidden_dims)
+        self.stopping_decision_head = DecisionHead(hidden_dims)
 
     def forward(self, x, **kwargs):
         if self.incremental_evaluation:
@@ -111,39 +104,6 @@ class EarlyRNN(nn.Module):
         self.backbone = get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size)
         
 
-def get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size):
-    model_map = {
-        "LSTM": {
-            "class": nn.LSTM,
-            "config": {
-                "input_size": hidden_dims,
-                "hidden_size": hidden_dims,
-                "num_layers": num_rnn_layers,
-                "bias": False,
-                "batch_first": True,
-                "dropout": dropout,
-                "bidirectional": False
-            }
-        },
-        "TempCNN": {
-            "class": TempCNN,
-            "config": {
-                "input_dim": hidden_dims,
-                "sequencelength": sequencelength,
-                "kernel_size": kernel_size,
-                "hidden_dims": hidden_dims, 
-                "dropout": dropout
-            }
-        }
-    }
-    
-    if backbone_model in model_map:
-        model_info = model_map[backbone_model]
-        return model_info["class"](**model_info["config"])
-    else:
-        raise ValueError(f"Backbone model {backbone_model} is not implemented yet.")
-
-
 class Padding(nn.Module):
     def __init__(self, left_padding:bool=False): 
         super(Padding, self).__init__()
@@ -165,50 +125,7 @@ class Padding(nn.Module):
             return x
         else:
             return x
-        
 
-class ClassificationHead(torch.nn.Module):
-
-    def __init__(self, hidden_dims, nclasses):
-        super(ClassificationHead, self).__init__()
-        self.projection = nn.Sequential(
-            nn.Linear(hidden_dims, nclasses, bias=True),
-            nn.LogSoftmax(dim=2))
-
-    def forward(self, x):
-        return self.projection(x)
-
-class DecisionHead(torch.nn.Module):
-
-    def __init__(self, hidden_dims):
-        super(DecisionHead, self).__init__()
-        self.projection = nn.Sequential(
-            nn.Linear(hidden_dims, 1, bias=True),
-            nn.Sigmoid()
-        )
-
-        # initialize bias to predict late in first epochs
-        torch.nn.init.normal_(self.projection[0].bias, mean=-2e1, std=1e-1)
-
-    def forward(self, x):
-        return self.projection(x).squeeze(2)
-
-class DecisionHeadDay(torch.nn.Module):
-    
-    def __init__(self, hidden_dims) -> None:
-        super(DecisionHeadDay, self).__init__()
-        self.projection = nn.Sequential(
-            nn.Linear(hidden_dims, 1, bias=True),
-            nn.Sigmoid()
-        )
-        # initialize bias to predict late in first epochs
-        torch.nn.init.normal_(self.projection[0].bias, mean=1e2, std=1e-1)
-
-    def forward(self, x):
-        x = self.projection(x).squeeze(2)
-        x = x*364
-        return x
-        
 
 if __name__ == "__main__":
     model = EarlyRNN()

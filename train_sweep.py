@@ -6,11 +6,11 @@ from sweeps.sweep_valid_eval import sweep_configuration
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
 from torch.utils.data import DataLoader
-from earlyrnn import EarlyRNN
+from models.earlyrnn import EarlyRNN
 import torch
 from tqdm import tqdm
 from utils.losses.early_reward_loss import EarlyRewardLoss
-from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss
+from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss, sample_three_uniform_numbers
 import sklearn.metrics
 import pandas as pd
 import wandb
@@ -26,7 +26,7 @@ def main():
     # ----------------------------- CONFIGURATION -----------------------------
     wandb.init(
         notes="ELECTS with different backbone models.",
-        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp", "new cost function"],
+        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp", "stopping time proximity cost"],
     )
     config = wandb.config
     # only use extra padding if tempcnn
@@ -36,29 +36,26 @@ def main():
     else:
         extra_padding_list = config.extra_padding_list
     
-        
+    # if timestamps are daily (new cost function) or not
+    if config.daily_timestamps: 
+        alpha1, alpha2, alpha3 = sample_three_uniform_numbers()
+        config.update({"sequencelength": 365,
+                       "decision_head": "day",
+                       "loss": "stopping_time_proximity",
+                       "alpha": [alpha1, alpha2, alpha3],
+                       })
+    else:
+        config.update({"sequencelength": 102,
+                       "decision_head": "default",
+                        "loss": "early_reward",
+                        "alpha": 0.6,
+                       })
+
     # check if config.validation_set is set
     if not hasattr(config, "validation_set"):
         config.validation_set = "valid"
     # ----------------------------- LOAD DATASET -----------------------------
-
-    if config.dataset == "bavariancrops":
-        dataroot = os.path.join(config.dataroot,"bavariancrops")
-        nclasses = 7
-        input_dim = 13
-        class_weights = None
-        train_ds = BavarianCrops(root=dataroot,partition="train", sequencelength=config.sequencelength)
-        test_ds = BavarianCrops(root=dataroot,partition=config.validation_set, sequencelength=config.sequencelength)
-        class_names = test_ds.classes
-    elif config.dataset == "unitedstates":
-        config.dataroot = "/data/modiscdl/"
-        config.sequencelength = 24
-        dataroot = config.dataroot
-        nclasses = 8
-        input_dim = 1
-        train_ds = ModisCDL(root=dataroot,partition="train", sequencelength=config.sequencelength)
-        test_ds = ModisCDL(root=dataroot,partition=config.validation_set, sequencelength=config.sequencelength)
-    elif config.dataset == "breizhcrops":
+    if config.dataset == "breizhcrops":
         dataroot = os.path.join(config.dataroot,"breizhcrops")
         nclasses = 9
         input_dim = 13
@@ -69,44 +66,6 @@ def main():
         test_ds = BreizhCrops(root=dataroot,partition=config.validation_set, sequencelength=config.sequencelength, corrected=config.corrected, daily_timestamps=config.daily_timestamps, original_time_serie_lengths=config.original_time_serie_lengths)
         class_names = test_ds.ds.classname
         print("class names:", class_names)
-    elif config.dataset in ["ghana"]:
-        use_s2_only = False
-        average_pixel = False
-        max_n_pixels = 50
-        dataroot = config.dataroot
-        nclasses = 4
-        input_dim = 12 if use_s2_only else 19  # 12 sentinel 2 + 3 x sentinel 1 + 4 * planet
-        config.epochs = 500
-        config.sequencelength = 365
-        train_ds = SustainbenchCrops(root=dataroot,partition="train", sequencelength=config.sequencelength,
-                                     country="ghana",
-                                     use_s2_only=use_s2_only, average_pixel=average_pixel,
-                                     max_n_pixels=max_n_pixels)
-        val_ds = SustainbenchCrops(root=dataroot,partition="val", sequencelength=config.sequencelength,
-                                    country="ghana", use_s2_only=use_s2_only, average_pixel=average_pixel,
-                                    max_n_pixels=max_n_pixels)
-
-        train_ds = torch.utils.data.ConcatDataset([train_ds, val_ds])
-
-        test_ds = SustainbenchCrops(root=dataroot,partition="test", sequencelength=config.sequencelength,
-                                    country="ghana", use_s2_only=use_s2_only, average_pixel=average_pixel,
-                                    max_n_pixels=max_n_pixels)
-        class_names = test_ds.classes
-    elif config.dataset in ["southsudan"]:
-        use_s2_only = False
-        dataroot = config.dataroot
-        nclasses = 4
-        config.sequencelength = 365
-        input_dim = 12 if use_s2_only else 19 # 12 sentinel 2 + 3 x sentinel 1 + 4 * planet
-        config.epochs = 500
-        train_ds = SustainbenchCrops(root=dataroot,partition="train", sequencelength=config.sequencelength, country="southsudan", use_s2_only=use_s2_only)
-        val_ds = SustainbenchCrops(root=dataroot,partition="val", sequencelength=config.sequencelength, country="southsudan", use_s2_only=use_s2_only)
-
-        train_ds = torch.utils.data.ConcatDataset([train_ds, val_ds])
-        test_ds = SustainbenchCrops(root=dataroot, partition="val", sequencelength=config.sequencelength,
-                                   country="southsudan", use_s2_only=use_s2_only)
-        class_names = test_ds.classes
-
     else:
         raise ValueError(f"dataset {config.dataset} not recognized")
     
@@ -149,16 +108,7 @@ def main():
     if config.loss == "early_reward":
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
     elif config.loss == "stopping_time_proximity":
-        A = config.A_stopping_time_proximity
-        B = config.B_stopping_time_proximity
-        alpha1 = A
-        alpha2 = B
-        alpha3 = 1-A-B
-        if alpha3 < 0:
-            alpha1 = 1 - alpha1
-            alpha2 = 1 - alpha2
-            alpha3 = -alpha3
-        criterion = StoppingTimeProximityLoss(alphas=[alpha1, alpha2, alpha3], weight=class_weights)
+        criterion = StoppingTimeProximityLoss(alphas=config.alpha, weight=class_weights)
     else: 
         print(f"loss {config.loss} not recognized, loss set to default: early_reward")
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
