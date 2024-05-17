@@ -25,7 +25,10 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
             ids = ids.unsqueeze(-1)
         X, y_true = X.to(device), y_true.to(device)
 
-        seqlengths = (X[:,:,0] != 0).sum(1)
+        if not daily_timestamps:
+            seqlengths = (X[:,:,0] != 0).sum(1)
+        else:
+            seqlengths = 365*torch.ones(X.shape[0], device=device)
         slengths.append(seqlengths.cpu().detach())
         
         # by default, we predict the sequence with the smallest padding
