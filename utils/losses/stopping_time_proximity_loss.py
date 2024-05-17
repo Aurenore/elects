@@ -1,5 +1,5 @@
 import torch 
-from torch import nn
+import torch.nn as nn
 from utils.losses.early_reward_loss import probability_correct_class
 from models.model_helpers import get_t_stop_from_daily_timestamps
 
@@ -22,17 +22,13 @@ class StoppingTimeProximityLoss(nn.Module):
 
         # classification loss
         cross_entropy = self.negative_log_likelihood(log_class_probabilities.view(N*T,C), y_true.view(N*T)).view(N,T)
-        print("cross_entropy.shape: ", cross_entropy.shape)
-        classification_loss = cross_entropy.mean(0)
-        print("classification_loss.shape: ", classification_loss.shape)
+        classification_loss = cross_entropy.sum(1).mean(0) # sum over time, mean over batch
 
         # earliness reward 
         t = torch.ones(N, T, device=log_class_probabilities.device) * \
                   torch.arange(T).type(torch.FloatTensor).to(log_class_probabilities.device)
         earliness_reward = probability_correct_class(log_class_probabilities, y_true) * (1 - t / T) * (1 - timestamps_left / T)
-        print("earliness_reward.shape: ", earliness_reward.shape)
-        earliness_reward = earliness_reward.sum(1).mean(0)
-        print("earliness_reward.shape: ", earliness_reward.shape)
+        earliness_reward = earliness_reward.sum(1).mean(0) # sum over time, mean over batch
 
         # time proximity reward 
         proximity_reward = get_proximity_reward(log_class_probabilities, y_true, timestamps_left)
@@ -51,24 +47,32 @@ class StoppingTimeProximityLoss(nn.Module):
             return loss
         
 
-def get_proximity_reward(logprobabilities, targets, timestamps_left):
+def get_proximity_reward(logprobabilities, targets, timestamps_left, max_number_pairs=256):
     """
     """
     batchsize, sequencelength, nclasses = logprobabilities.shape
 
-    t_finals = get_t_stop_from_daily_timestamps(timestamps_left) # shape (batchsize,)
+    t_finals = get_t_stop_from_daily_timestamps(timestamps_left).to(logprobabilities.device) # shape (batchsize,)
 
     result = 0
 
     for class_idx in range(nclasses):
         # get the samples that are of the class class_idx
-        class_mask = targets == class_idx # shape (batchsize, sequencelength)
-        class_logprobabilities = logprobabilities[class_mask] # shape (batchsize, sequencelength)
-        indices = torch.arange(class_logprobabilities.shape[0]).to(logprobabilities.device) # shape (batchsize,)
-        t_finals_class = t_finals[class_mask] # shape (batchsize,)
+        class_mask = (targets[:, 0] == class_idx).to(logprobabilities.device) # shape (batchsize, )
+        class_size = class_mask.sum() 
+        
+        indices = torch.arange(class_size).to(logprobabilities.device) # shape (class_size,)
+        t_finals_class = t_finals[class_mask] # shape (class_size,)
+        
+        # take the log probabilities of the samples of the class class_idx
+        class_logprobabilities = logprobabilities[class_mask,:,class_idx] # shape (class_size, sequencelength)
 
         # get all pairs of indices of the same class
         pairs = torch.combinations(indices, with_replacement=False)
+        # if number of pairs higher than max_number_pairs, take a random sample of max_number_pairs pairs
+        if len(pairs) > max_number_pairs:
+            pairs = pairs[torch.randperm(len(pairs))[:max_number_pairs]]
+            
         for pair in pairs:
             sample1_index, sample2_index = pair
 
@@ -82,8 +86,8 @@ def get_proximity_reward(logprobabilities, targets, timestamps_left):
 
             # calculate the proximity reward
             result += torch.exp(logprob1) * torch.exp(logprob2) * ((t_final_1-t_final_2)/sequencelength)**2
-
-    return result           
+            
+    return result          
 
 
 def sample_three_uniform_numbers():
