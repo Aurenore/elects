@@ -138,7 +138,7 @@ def main():
     with tqdm(range(start_epoch, config.epochs + 1)) as pbar:
         for epoch in pbar:
             trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, extra_padding_list=extra_padding_list)
-            testloss, stats = test_epoch(model, testdataloader, criterion, config.device, extra_padding_list=extra_padding_list, return_id=test_ds.return_id)
+            testloss, stats = test_epoch(model, testdataloader, criterion, config.device, extra_padding_list=extra_padding_list, return_id=test_ds.return_id, daily_timestamps=config.daily_timestamps)
 
             # statistic logging and visualization...
             precision, recall, fscore, support = sklearn.metrics.precision_recall_fscore_support(
@@ -188,10 +188,13 @@ def main():
                             y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
                             class_names=class_names, title="Confusion Matrix")
                 }
-            if epoch % 10 == 1:
+            if epoch % 5 == 1:
                 fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
-                doys_dict = get_approximated_doys_dict(stats["seqlengths"], length_sorted_doy_dict_test)
-                doys_stop = get_doy_stop(stats, doys_dict)
+                if config.daily_timestamps:
+                    doys_stop = stats["t_stop"].squeeze()
+                else: 
+                    doys_dict = get_approximated_doys_dict(stats["seqlengths"], length_sorted_doy_dict_test)
+                    doys_stop = get_doy_stop(stats, doys_dict)
                 fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names)
                 dict_to_wandb["boxplot"] = wandb.Image(fig_boxplot)
                 plt.close(fig_boxplot)

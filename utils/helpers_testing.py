@@ -36,6 +36,7 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
         log_class_probabilities, stopping_criteria, predictions_at_t_stop, t_stop = model.predict(X, **dict_padding)
             
         if len(extra_padding_list) > 1:
+            assert not daily_timestamps, "Extra padding is not implemented for daily_timestamps"
             # mask for sequences that are not predicted yet
             unpredicted_seq_mask = torch.ones(X.shape[0], dtype=bool).to(device)
             # index for the extra_padding_list
