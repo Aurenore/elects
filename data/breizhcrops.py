@@ -126,7 +126,7 @@ class BreizhCrops(Dataset):
         The class with the smallest count will have weight 1, others will have a weight < 1
         """
         if self.class_weights is None:
-            class_counts = torch.zeros(len(LABELS_NAMES))
+            class_counts = torch.zeros(self.nclasses)
             for i in range(len(self.ds)):
                 _, y, _ = self.ds[i]
                 class_counts[y] += 1
@@ -480,6 +480,7 @@ class BzhBreizhCrops(Dataset):
         """
         if corrected is True, only time series with lengths in "original_time_serie_lengths" will be kept.
         Moreover, small classes (nuts and sunflowers) are removed. 
+        To take the previous change into account, target_transform is updated to update the labels. 
         """
         if self.corrected and self.level=="L1C":
             # create a file with only 51 and 102 length time series
@@ -488,9 +489,13 @@ class BzhBreizhCrops(Dataset):
             # remove the small classes: classnames nuts and sunflowers
             df = df[~df['classid'].isin([6, 4])]
             # change the classid from 0 to 7, after removing 4 and 6, knowing that the classes were from 0 to 9. 
-            df['classid'] = df['classid'].replace({0: 0, 1: 1, 2: 2, 3: 3, 5: 4, 7: 5, 8: 6, 9: 7})
+            dict_new_classid = {0: 0, 1: 1, 2: 2, 3: 3, 5: 4, 7: 5, 8: 6}
+            df['classid'] = df['classid'].replace(dict_new_classid)
             self.indexfile = self.indexfile.replace(".csv", "_corrected.csv")
+            assert df['classid'].nunique() == 7
             df.to_csv(self.indexfile, index=False)
+            # change self.target_transform to take into account the new classid, i.e. following dict_new_classid
+            self.target_transform = lambda y: torch.tensor(dict_new_classid[y], dtype=torch.long)
 
     def set_labels_names(self):
         unique_samples_classnames = self.index[['classname', 'classid']].drop_duplicates()
