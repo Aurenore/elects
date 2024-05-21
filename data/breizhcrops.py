@@ -237,29 +237,15 @@ class BzhBreizhCrops(Dataset):
             self.write_h5_database_from_csv(self.index)
         if not h5_database_ok and not recompile_h5_from_csv and load_timeseries:
             self.download_h5_database()
-
-        if self.corrected and self.level=="L1C":
-            # create a file with only 51 and 102 length time series
-            df = pd.read_csv(self.indexfile, index_col=None)
-            df = df[df["sequencelength"].isin(original_time_serie_lengths)]
-            # remove the small classes: classnames nuts and sunflowers
-            df = df[~df['classid'].isin([6, 4])]
-            # change the classid from 0 to 7, after removing 4 and 6, knowing that the classes were from 0 to 9. 
-            df['classid'] = df['classid'].replace({0: 0, 1: 1, 2: 2, 3: 3, 5: 4, 7: 5, 8: 6, 9: 7})
-            self.indexfile = self.indexfile.replace(".csv", "_corrected.csv")
             
-            df.to_csv(self.indexfile, index=False)
-            
+        self.correct_sequence_length(original_time_serie_lengths)
+    
         self.index = pd.read_csv(self.indexfile, index_col=None)
         self.index = self.index.loc[self.index["CODE_CULTU"].isin(self.mapping.index)]
         if verbose:
             print(f"kept {len(self.index)} time series references from applying class mapping")
             
-        self.labels_names = self.index[['classname', 'classid']].unique()
-        # sort self.labels_names by classid
-        self.labels_names = self.labels_names[np.argsort(self.labels_names[:, 1])]
-        # only keep the classname
-        self.labels_names = self.labels_names[:, 0]
+        self.set_labels_names() 
 
         # filter zero-length time series
         if self.index.index.name != "idx":
@@ -489,6 +475,29 @@ class BzhBreizhCrops(Dataset):
 
         self.index = pd.DataFrame(listcsv_statistics)
         self.index.to_csv(self.indexfile)
+        
+    def correct_sequence_length(self, original_time_serie_lengths):
+        """
+        if corrected is True, only time series with lengths in "original_time_serie_lengths" will be kept.
+        Moreover, small classes (nuts and sunflowers) are removed. 
+        """
+        if self.corrected and self.level=="L1C":
+            # create a file with only 51 and 102 length time series
+            df = pd.read_csv(self.indexfile, index_col=None)
+            df = df[df["sequencelength"].isin(original_time_serie_lengths)]
+            # remove the small classes: classnames nuts and sunflowers
+            df = df[~df['classid'].isin([6, 4])]
+            # change the classid from 0 to 7, after removing 4 and 6, knowing that the classes were from 0 to 9. 
+            df['classid'] = df['classid'].replace({0: 0, 1: 1, 2: 2, 3: 3, 5: 4, 7: 5, 8: 6, 9: 7})
+            self.indexfile = self.indexfile.replace(".csv", "_corrected.csv")
+            df.to_csv(self.indexfile, index=False)
+
+    def set_labels_names(self):
+        unique_samples_classnames = self.index[['classname', 'classid']].drop_duplicates()
+        # Sort by 'classid'
+        sorted_samples = unique_samples_classnames.sort_values(by='classid')
+        # Keep only the 'classname' column
+        self.labels_names = sorted_samples['classname'].values
 
 
 def get_default_transform(level):

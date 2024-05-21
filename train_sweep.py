@@ -58,14 +58,14 @@ def main():
     # ----------------------------- LOAD DATASET -----------------------------
     if config.dataset == "breizhcrops":
         dataroot = os.path.join(config.dataroot,"breizhcrops")
-        nclasses = 9
         input_dim = 13
         doys_dict_test = get_doys_dict_test(dataroot=os.path.join(config.dataroot,config.dataset))
         length_sorted_doy_dict_test = create_sorted_doys_dict_test(doys_dict_test)
         print("get train and validation data...")
         train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=config.sequencelength, corrected=config.corrected, daily_timestamps=config.daily_timestamps, original_time_serie_lengths=config.original_time_serie_lengths)
         test_ds = BreizhCrops(root=dataroot,partition=config.validation_set, sequencelength=config.sequencelength, corrected=config.corrected, daily_timestamps=config.daily_timestamps, original_time_serie_lengths=config.original_time_serie_lengths)
-        class_names = test_ds.ds.classname
+        nclasses = train_ds.nclasses
+        class_names = train_ds.labels_names
         print("class names:", class_names)
     else:
         raise ValueError(f"dataset {config.dataset} not recognized")
