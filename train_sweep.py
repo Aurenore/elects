@@ -11,7 +11,7 @@ from models.daily_earlyrnn import DailyEarlyRNN
 import torch
 from tqdm import tqdm
 from utils.losses.early_reward_loss import EarlyRewardLoss
-from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss, sample_three_uniform_numbers, sample_two_numbers
+from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss, sample_three_uniform_numbers
 import sklearn.metrics
 import pandas as pd
 import wandb
@@ -40,21 +40,16 @@ def main():
     # if timestamps are daily (new cost function) or not
     if config.daily_timestamps: 
         # alpha1, alpha2, alpha3 = sample_three_uniform_numbers()
-        alpha1 = 0.6
-        alpha2, alpha3 = sample_two_numbers(alpha1)
-        
+        alpha3 = 1-config.alpha1-config.alpha2
         config.update({"sequencelength": 365,
                         "decision_head": "day",
                         "loss": "stopping_time_proximity",
-                        "alpha1": alpha1, 
-                        "alpha2": alpha2,
                         "alpha3": alpha3,
                         })
     else:
         config.update({"sequencelength": 102,
                         "decision_head": "default",
                         "loss": "early_reward",
-                        "alpha": 0.6,
                         })
 
     # check if config.validation_set is set
