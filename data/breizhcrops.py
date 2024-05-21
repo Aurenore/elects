@@ -59,6 +59,8 @@ class BreizhCrops(Dataset):
             self.sequencelength = sequencelength
         self.return_id = return_id
         self.class_weights = None
+        self.labels_names = self.ds.labels_names
+        self.nclasses = len(self.labels_names)
 
     def __len__(self):
         return len(self.ds)
@@ -242,13 +244,22 @@ class BzhBreizhCrops(Dataset):
             df = df[df["sequencelength"].isin(original_time_serie_lengths)]
             # remove the small classes: classnames nuts and sunflowers
             df = df[~df['classid'].isin([6, 4])]
+            # change the classid from 0 to 7, after removing 4 and 6, knowing that the classes were from 0 to 9. 
+            df['classid'] = df['classid'].replace({0: 0, 1: 1, 2: 2, 3: 3, 5: 4, 7: 5, 8: 6, 9: 7})
             self.indexfile = self.indexfile.replace(".csv", "_corrected.csv")
+            
             df.to_csv(self.indexfile, index=False)
             
         self.index = pd.read_csv(self.indexfile, index_col=None)
         self.index = self.index.loc[self.index["CODE_CULTU"].isin(self.mapping.index)]
         if verbose:
             print(f"kept {len(self.index)} time series references from applying class mapping")
+            
+        self.labels_names = self.index[['classname', 'classid']].unique()
+        # sort self.labels_names by classid
+        self.labels_names = self.labels_names[np.argsort(self.labels_names[:, 1])]
+        # only keep the classname
+        self.labels_names = self.labels_names[:, 0]
 
         # filter zero-length time series
         if self.index.index.name != "idx":
@@ -276,7 +287,6 @@ class BzhBreizhCrops(Dataset):
             self.index[["classid", "classname"]] = self.index["CODE_CULTU"].apply(lambda code: self.mapping.loc[code])
             self.index["region"] = self.region
             self.index.to_csv(self.indexfile)
-
         self.get_codes()
 
     def download_csv_files(self):
