@@ -11,7 +11,7 @@ from models.daily_earlyrnn import DailyEarlyRNN
 import torch
 from tqdm import tqdm
 from utils.losses.early_reward_loss import EarlyRewardLoss
-from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss, sample_three_uniform_numbers
+from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss, sample_three_uniform_numbers, sample_two_numbers
 import sklearn.metrics
 import pandas as pd
 import wandb
@@ -39,18 +39,23 @@ def main():
     
     # if timestamps are daily (new cost function) or not
     if config.daily_timestamps: 
-        alpha1, alpha2, alpha3 = sample_three_uniform_numbers()
+        # alpha1, alpha2, alpha3 = sample_three_uniform_numbers()
+        alpha1 = 0.6
+        alpha2, alpha3 = sample_two_numbers(alpha1)
+        
         config.update({"sequencelength": 365,
-                       "decision_head": "day",
-                       "loss": "stopping_time_proximity",
-                       "alpha": [alpha1, alpha2, alpha3],
-                       })
+                        "decision_head": "day",
+                        "loss": "stopping_time_proximity",
+                        "alpha1": alpha1, 
+                        "alpha2": alpha2,
+                        "alpha3": alpha3,
+                        })
     else:
         config.update({"sequencelength": 102,
-                       "decision_head": "default",
+                        "decision_head": "default",
                         "loss": "early_reward",
                         "alpha": 0.6,
-                       })
+                        })
 
     # check if config.validation_set is set
     if not hasattr(config, "validation_set"):
@@ -102,7 +107,7 @@ def main():
             decay.append(param)
 
     optimizer = torch.optim.AdamW([{'params': no_decay, 'weight_decay': 0, "lr": config.learning_rate}, {'params': decay}],
-                                  lr=config.learning_rate, weight_decay=config.weight_decay)
+                                    lr=config.learning_rate, weight_decay=config.weight_decay)
 
     if config.loss_weight == "balanced":
         class_weights = train_ds.get_class_weights().to(config.device)
@@ -112,7 +117,7 @@ def main():
     if config.loss == "early_reward":
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
     elif config.loss == "stopping_time_proximity":
-        criterion = StoppingTimeProximityLoss(alphas=config.alpha, weight=class_weights)
+        criterion = StoppingTimeProximityLoss(alphas=[config.alpha1, config.alpha2, config.alpha3], weight=class_weights)
     else: 
         print(f"loss {config.loss} not recognized, loss set to default: early_reward")
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
@@ -120,8 +125,8 @@ def main():
     if config.resume and os.path.exists(config.snapshot):
         model.load_state_dict(torch.load(config.snapshot, map_location=config.device))
         optimizer_snapshot = os.path.join(os.path.dirname(config.snapshot),
-                                          os.path.basename(config.snapshot).replace(".pth", "_optimizer.pth")
-                                          )
+                                            os.path.basename(config.snapshot).replace(".pth", "_optimizer.pth")
+                                            )
         optimizer.load_state_dict(torch.load(optimizer_snapshot, map_location=config.device))
         df = pd.read_csv(config.snapshot + ".csv")
         train_stats = df.to_dict("records")

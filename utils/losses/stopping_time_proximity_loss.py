@@ -103,3 +103,11 @@ def sample_three_uniform_numbers():
     uniform_samples = exp_samples / total
     
     return uniform_samples
+
+def sample_two_numbers(alpha1=0.6): 
+    # sample two numbers that sum to 1-alpha1
+    sum_samples = 1 - alpha1
+    uniform_samples = torch.rand(2)
+    uniform_samples /= uniform_samples.sum()
+    uniform_samples *= sum_samples
+    return uniform_samples

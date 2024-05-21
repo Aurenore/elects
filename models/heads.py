@@ -37,7 +37,7 @@ class DecisionHeadDay(torch.nn.Module):
             nn.Sigmoid()
         )
         # initialize bias to predict late in first epochs
-        torch.nn.init.normal_(self.projection[0].bias, mean=2e2, std=1e-1)
+        torch.nn.init.normal_(self.projection[0].bias, mean=20, std=1e-1)
 
     def forward(self, x):
         x = self.projection(x).squeeze(2)
