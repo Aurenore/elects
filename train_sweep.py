@@ -1,5 +1,6 @@
 import sys
 import os 
+import copy
 #os.environ['MPLCONFIGDIR'] = "$HOME"
 from sweeps.sweep_valid_eval import sweep_configuration
 #os.environ["WANDB_DIR"] = os.path.join(os.path.dirname(__file__), "..", "wandb")
@@ -27,7 +28,7 @@ def main():
     # ----------------------------- CONFIGURATION -----------------------------
     wandb.init(
         notes="ELECTS with different backbone models.",
-        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp", "stopping time proximity cost"],
+        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp", "stopping time proximity cost", "with weights class in get_proximity_reward"],
     )
     config = wandb.config
     # only use extra padding if tempcnn
@@ -155,25 +156,10 @@ def main():
             harmonic_mean = harmonic_mean_score(accuracy, stats["classification_earliness"])
 
             # ----------------------------- LOGGING -----------------------------
-            train_stats.append(
-                dict(
-                    epoch=epoch,
-                    trainloss=trainloss,
-                    testloss=testloss,
-                    accuracy=accuracy,
-                    precision=precision,
-                    recall=recall,
-                    fscore=fscore,
-                    kappa=kappa,
-                    elects_earliness=earliness,
-                    classification_loss=classification_loss,
-                    earliness_reward=earliness_reward,
-                    classification_earliness=stats["classification_earliness"],
-                    harmonic_mean=harmonic_mean,
-                )
-            )
-            dict_to_wandb = {
-                    "loss": {"trainloss": trainloss, "testloss": testloss},
+            dict_results_epoch = {
+                    "epoch": epoch,
+                    "trainloss": trainloss,
+                    "testloss": testloss,                    
                     "accuracy": accuracy,
                     "precision": precision,
                     "recall": recall,
@@ -184,10 +170,18 @@ def main():
                     "earliness_reward": earliness_reward,
                     "classification_earliness": stats["classification_earliness"],
                     "harmonic_mean": harmonic_mean,
-                    "conf_mat" : wandb.plot.confusion_matrix(probs=None,
+            }
+            if config.loss == "stopping_time_proximity":
+                dict_results_epoch.update({"proximity_reward": stats["proximity_reward"].mean()})
+            train_stats.append(copy.deepcopy(dict_results_epoch))
+            
+            # update for wandb format
+            dict_results_epoch.pop("trainloss")
+            dict_results_epoch.pop("testloss")
+            dict_results_epoch.update({"conf_mat" : wandb.plot.confusion_matrix(probs=None,
                             y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
-                            class_names=class_names, title="Confusion Matrix")
-                }
+                            class_names=class_names, title="Confusion Matrix"),
+                            "loss": {"trainloss": trainloss, "testloss": testloss},})
             if epoch % 5 == 1:
                 fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
                 if config.daily_timestamps:
@@ -196,11 +190,10 @@ def main():
                     doys_dict = get_approximated_doys_dict(stats["seqlengths"], length_sorted_doy_dict_test)
                     doys_stop = get_doy_stop(stats, doys_dict)
                 fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names)
-                dict_to_wandb["boxplot"] = wandb.Image(fig_boxplot)
+                dict_results_epoch["boxplot"] = wandb.Image(fig_boxplot)
                 plt.close(fig_boxplot)
             
-            wandb.log(dict_to_wandb)
-            
+            wandb.log(dict_results_epoch)
 
             df = pd.DataFrame(train_stats).set_index("epoch")
 

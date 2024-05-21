@@ -26,15 +26,14 @@ class StoppingTimeProximityLoss(nn.Module):
 
         # earliness reward 
         t = torch.ones(N, T, device=log_class_probabilities.device) * \
-                  torch.arange(T).type(torch.FloatTensor).to(log_class_probabilities.device)
+                torch.arange(T).type(torch.FloatTensor).to(log_class_probabilities.device)
         earliness_reward = probability_correct_class(log_class_probabilities, y_true) * (1 - t / T) * (1 - timestamps_left / T)
         earliness_reward = earliness_reward.sum(1).mean(0) # sum over time, mean over batch
 
         # time proximity reward 
         proximity_reward = get_proximity_reward(log_class_probabilities, y_true, timestamps_left)
-
         # total loss
-        loss = self.alphas[0] * classification_loss - self.alphas[1] * earliness_reward - self.alphas[2] * proximity_reward
+        loss = self.alphas[0] * classification_loss - self.alphas[1] * earliness_reward + self.alphas[2] * proximity_reward
 
         if return_stats: 
             stats = dict(
@@ -57,6 +56,7 @@ def get_proximity_reward(logprobabilities, targets, timestamps_left, max_number_
     result = 0
 
     for class_idx in range(nclasses):
+        result_class = 0
         # get the samples that are of the class class_idx
         class_mask = (targets[:, 0] == class_idx).to(logprobabilities.device) # shape (batchsize, )
         class_size = class_mask.sum() 
@@ -71,7 +71,10 @@ def get_proximity_reward(logprobabilities, targets, timestamps_left, max_number_
         pairs = torch.combinations(indices, with_replacement=False)
         # if number of pairs higher than max_number_pairs, take a random sample of max_number_pairs pairs
         if len(pairs) > max_number_pairs:
+            weight_class = len(pairs)/max_number_pairs
             pairs = pairs[torch.randperm(len(pairs))[:max_number_pairs]]
+        else: 
+            weight_class = 1
             
         for pair in pairs:
             sample1_index, sample2_index = pair
@@ -85,8 +88,11 @@ def get_proximity_reward(logprobabilities, targets, timestamps_left, max_number_
             logprob2 = class_logprobabilities[sample2_index, t_final_2]
 
             # calculate the proximity reward
-            result += torch.exp(logprob1) * torch.exp(logprob2) * ((t_final_1-t_final_2)/sequencelength)**2
-            
+            result_class += torch.exp(logprob1) * torch.exp(logprob2) * ((t_final_1-t_final_2)/sequencelength)**2
+        
+        result_class *= weight_class
+        result += result_class
+        
     return result          
 
 
