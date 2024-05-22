@@ -4,7 +4,7 @@ from utils.losses.early_reward_loss import probability_correct_class
 from models.model_helpers import get_t_stop_from_daily_timestamps
 
 class StoppingTimeProximityLoss(nn.Module):
-    def __init__(self, alphas=[1/3, 1/3, 1/3], weight=None):
+    def __init__(self, alphas=[1/4, 1/4, 1/4, 1/4], weight=None):
         """
         INPUT: 
         - alphas: list of 3 floats that sum to 1, the weights of the classification loss, earliness reward and proximity reward. Must be positive
@@ -30,16 +30,26 @@ class StoppingTimeProximityLoss(nn.Module):
                 torch.arange(T).type(torch.FloatTensor).to(log_class_probabilities.device)
         earliness_reward = probability_correct_class(log_class_probabilities, y_true, weight=self.weight) * (1 - t / T) * (1 - timestamps_left / T)
         earliness_reward = earliness_reward.sum(1).mean(0) # sum over time, mean over batch
-
+        
+        # early wrong predictions penalty
+        wrong_pred_penalty = probability_wrong_class(log_class_probabilities, y_true, weight=self.weight) * (1 - t / T) * (timestamps_left / T)
+        wrong_pred_penalty = wrong_pred_penalty.sum(1).mean(0) # sum over time, mean over batch
+        
         # time proximity reward 
-        proximity_reward = get_proximity_reward(log_class_probabilities, y_true, timestamps_left)
+        if self.alphas[2] > 0:
+            # to avoid unnecessary calculations
+            proximity_reward = get_proximity_reward(log_class_probabilities, y_true, timestamps_left)
+        else: 
+            proximity_reward = 0
+            
         # total loss
-        loss = self.alphas[0] * classification_loss - self.alphas[1] * earliness_reward + self.alphas[2] * proximity_reward
+        loss = self.alphas[0]*classification_loss - self.alphas[1]*earliness_reward - self.alphas[2]*wrong_pred_penalty + self.alphas[3]*proximity_reward
 
         if return_stats: 
             stats = dict(
                 classification_loss=classification_loss.cpu().detach().numpy(),
                 earliness_reward=earliness_reward.cpu().detach().numpy(),
+                wrong_pred_penalty=wrong_pred_penalty.cpu().detach().numpy(),
                 proximity_reward=proximity_reward.cpu().detach().numpy()
             )
             return loss, stats
@@ -94,7 +104,27 @@ def get_proximity_reward(logprobabilities, targets, timestamps_left, max_number_
         result_class *= weight_class
         result += result_class
         
-    return result          
+    return result  
+
+
+def probability_wrong_class(logprobabilities, targets, weight=None):
+    """
+    targets: shape (batchsize, sequencelength)
+    logprobabilities: shape (batchsize, sequencelength, nclasses)
+    weight: shape (nclasses, )
+    """
+    batchsize, sequencelength, nclasses = logprobabilities.shape
+
+    eye = torch.eye(nclasses).type(torch.ByteTensor).to(logprobabilities.device)
+
+    targets_one_hot = eye[targets]
+    targets_one_hot = ~targets_one_hot # since we want the wrong classes
+
+    y_haty = torch.masked_select(logprobabilities, targets_one_hot.bool())
+    result = y_haty.view(batchsize, sequencelength).exp()
+    if weight is not None: 
+        result = result * weight[targets]
+    return result
 
 
 def sample_three_uniform_numbers():

@@ -41,11 +41,11 @@ def main():
     # if timestamps are daily (new cost function) or not
     if config.daily_timestamps: 
         # alpha1, alpha2, alpha3 = sample_three_uniform_numbers()
-        alpha3 = 1-config.alpha1-config.alpha2
+        alpha4 = 1-config.alpha1-config.alpha2-config.alpha3
         config.update({"sequencelength": 365,
                         "decision_head": "day",
                         "loss": "stopping_time_proximity",
-                        "alpha3": alpha3,
+                        "alpha4": alpha4,
                         })
     else:
         config.update({"sequencelength": 102,
@@ -113,7 +113,7 @@ def main():
     if config.loss == "early_reward":
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
     elif config.loss == "stopping_time_proximity":
-        criterion = StoppingTimeProximityLoss(alphas=[config.alpha1, config.alpha2, config.alpha3], weight=class_weights)
+        criterion = StoppingTimeProximityLoss(alphas=[config.alpha1, config.alpha2, config.alpha3, config.alpha4], weight=class_weights)
     else: 
         print(f"loss {config.loss} not recognized, loss set to default: early_reward")
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
@@ -172,7 +172,10 @@ def main():
                     "harmonic_mean": harmonic_mean,
             }
             if config.loss == "stopping_time_proximity":
-                dict_results_epoch.update({"proximity_reward": stats["proximity_reward"].mean()})
+                dict_results_epoch.update({
+                    "proximity_reward": stats["proximity_reward"].mean(),
+                    "wrong_pred_penalty": stats["wrong_pred_penalty"].mean(),
+                    })
             train_stats.append(copy.deepcopy(dict_results_epoch))
             
             # update for wandb format
