@@ -68,6 +68,11 @@ def calculate_probability_making_decision(deltas):
     return torch.stack(pts, dim=-1)
 
 def probability_correct_class(logprobabilities, targets, weight=None):
+    """
+    targets: shape (batchsize, sequencelength)
+    logprobabilities: shape (batchsize, sequencelength, nclasses)
+    weight: shape (nclasses, )
+    """
     batchsize, seqquencelength, nclasses = logprobabilities.shape
 
     eye = torch.eye(nclasses).type(torch.ByteTensor).to(logprobabilities.device)
