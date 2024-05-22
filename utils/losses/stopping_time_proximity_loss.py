@@ -16,6 +16,7 @@ class StoppingTimeProximityLoss(nn.Module):
 
         self.negative_log_likelihood = nn.NLLLoss(reduction="none", weight=weight)
         self.alphas = alphas
+        self.weight = weight
 
     def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False):
         N, T, C = log_class_probabilities.shape
@@ -27,7 +28,7 @@ class StoppingTimeProximityLoss(nn.Module):
         # earliness reward 
         t = torch.ones(N, T, device=log_class_probabilities.device) * \
                 torch.arange(T).type(torch.FloatTensor).to(log_class_probabilities.device)
-        earliness_reward = probability_correct_class(log_class_probabilities, y_true) * (1 - t / T) * (1 - timestamps_left / T)
+        earliness_reward = probability_correct_class(log_class_probabilities, y_true, weight=self.weight) * (1 - t / T) * (1 - timestamps_left / T)
         earliness_reward = earliness_reward.sum(1).mean(0) # sum over time, mean over batch
 
         # time proximity reward 
