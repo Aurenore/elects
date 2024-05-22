@@ -44,9 +44,8 @@ def get_t_stop_from_daily_timestamps(timestamps_left):
     # t_stop is the time at which the model stops. It is the first time the timestamps_left is strictly smaller than 1
     batchsize, sequencelength = timestamps_left.shape
     time_smaller_than_1 = (timestamps_left < 1).int()
-    if time_smaller_than_1.sum() == 0:
-        # then t_stop is set to the last time step
-        t_stop = torch.tensor(sequencelength - 1).repeat(batchsize)
-    else:
-        t_stop = torch.argmax(time_smaller_than_1, dim=1)
+    t_stop = torch.argmax(time_smaller_than_1, dim=1) # shape: (batchsize,)
+    # for t_stop==0 and time_smaller_than_1==0, set t_stop to sequencelength-1
+    t_stop = torch.where(t_stop == 0, torch.tensor(sequencelength-1).to(t_stop.device), t_stop)   
+
     return t_stop
