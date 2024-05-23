@@ -33,7 +33,7 @@ class StoppingTimeProximityLoss(nn.Module):
         
         # early wrong predictions penalty
         wrong_pred_penalty = probability_wrong_class(log_class_probabilities, y_true, weight=self.weight) * (1 - t / T) * (timestamps_left / T)
-        wrong_pred_penalty = wrong_pred_penalty.sum(1).mean(0) # sum over time, mean over batch
+        wrong_pred_penalty = wrong_pred_penalty.sum(1).mean(0) # sum over time, mean over batch 
         
         # time proximity reward 
         if self.alphas[2] > 0:
@@ -112,19 +112,22 @@ def probability_wrong_class(logprobabilities, targets, weight=None):
     targets: shape (batchsize, sequencelength)
     logprobabilities: shape (batchsize, sequencelength, nclasses)
     weight: shape (nclasses, )
+    OUTPUT: 
+    - shape (batchsize, sequencelength)
     """
     batchsize, sequencelength, nclasses = logprobabilities.shape
 
     eye = torch.eye(nclasses).type(torch.ByteTensor).to(logprobabilities.device)
 
     targets_one_hot = eye[targets]
-    targets_one_hot = ~targets_one_hot # since we want the wrong classes
+    targets_one_hot = ~targets_one_hot # since we want the wrong classes, shape: (batchsize, sequencelength, nclasses)
 
-    y_haty = torch.masked_select(logprobabilities, targets_one_hot.bool())
-    result = y_haty.view(batchsize, sequencelength).exp()
+    y_haty = torch.masked_select(logprobabilities, targets_one_hot.bool()) # shape: (batchsize*sequencelength*nclasses,)
+    result = y_haty.view(batchsize, sequencelength, nclasses).exp() # shape: (batchsize, sequencelength, nclasses)
     if weight is not None: 
-        result = result * weight[targets]
-    return result
+        result = result * weight
+    # sum over classes
+    return result.sum(2) 
 
 
 def sample_three_uniform_numbers():
