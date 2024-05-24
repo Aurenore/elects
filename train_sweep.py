@@ -28,7 +28,7 @@ def main():
     # ----------------------------- CONFIGURATION -----------------------------
     wandb.init(
         notes="ELECTS with new cost function",
-        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp", "OG ELECTS"],
+        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp", "OG ELECTS", "alphas"],
     )
     config = wandb.config
     # only use extra padding if tempcnn
