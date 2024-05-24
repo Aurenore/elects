@@ -32,11 +32,11 @@ class StoppingTimeProximityLoss(nn.Module):
         earliness_reward = earliness_reward.sum(1).mean(0) # sum over time, mean over batch
         
         # early wrong predictions penalty
-        wrong_pred_penalty = probability_wrong_class(log_class_probabilities, y_true, weight=self.weight) * (1 - t / T) * (timestamps_left / T)
+        wrong_pred_penalty = probability_wrong_class(log_class_probabilities, y_true, weight=self.weight) * (1 - t / T)**2 * (timestamps_left / T)**2
         wrong_pred_penalty = wrong_pred_penalty.sum(1).mean(0) # sum over time, mean over batch 
         
         # time proximity reward 
-        if self.alphas[2] > 0:
+        if self.alphas[3] > 0:
             # to avoid unnecessary calculations
             proximity_reward = get_proximity_reward(log_class_probabilities, y_true, timestamps_left)
         else: 

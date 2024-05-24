@@ -27,8 +27,8 @@ import matplotlib.pyplot as plt
 def main():
     # ----------------------------- CONFIGURATION -----------------------------
     wandb.init(
-        notes="ELECTS with different backbone models.",
-        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp", "stopping time proximity cost", "with weights class in get_proximity_reward"],
+        notes="ELECTS with new cost function",
+        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp", "OG ELECTS"],
     )
     config = wandb.config
     # only use extra padding if tempcnn
@@ -37,21 +37,6 @@ def main():
         print(f"Since LSTM is used, extra padding is set to {extra_padding_list}")
     else:
         extra_padding_list = config.extra_padding_list
-    
-    # if timestamps are daily (new cost function) or not
-    if config.daily_timestamps: 
-        # alpha1, alpha2, alpha3 = sample_three_uniform_numbers()
-        alpha4 = 1-config.alpha1-config.alpha2-config.alpha3
-        config.update({"sequencelength": 365,
-                        "decision_head": "day",
-                        "loss": "stopping_time_proximity",
-                        "alpha4": alpha4,
-                        })
-    else:
-        config.update({"sequencelength": 102,
-                        "decision_head": "default",
-                        "loss": "early_reward",
-                        })
 
     # check if config.validation_set is set
     if not hasattr(config, "validation_set"):
@@ -113,6 +98,8 @@ def main():
     if config.loss == "early_reward":
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
     elif config.loss == "stopping_time_proximity":
+        alpha4 = 1-config.alpha1-config.alpha2-config.alpha3
+        config.update({"alpha4": alpha4})
         criterion = StoppingTimeProximityLoss(alphas=[config.alpha1, config.alpha2, config.alpha3, config.alpha4], weight=class_weights)
     else: 
         print(f"loss {config.loss} not recognized, loss set to default: early_reward")

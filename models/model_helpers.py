@@ -40,10 +40,10 @@ def get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn
         raise ValueError(f"Backbone model {backbone_model} is not implemented yet.")
     
 
-def get_t_stop_from_daily_timestamps(timestamps_left):
+def get_t_stop_from_daily_timestamps(timestamps_left, threshold=5):
     # t_stop is the time at which the model stops. It is the first time the timestamps_left is strictly smaller than 1
     batchsize, sequencelength = timestamps_left.shape
-    time_smaller_than_1 = (timestamps_left < 1).int()
+    time_smaller_than_1 = (timestamps_left < threshold).int()
     t_stop = torch.argmax(time_smaller_than_1, dim=1) # shape: (batchsize,)
     # for t_stop==0 and time_smaller_than_1==0, set t_stop to sequencelength-1
     t_stop = torch.where(t_stop == 0, torch.tensor(sequencelength-1).to(t_stop.device), t_stop)   
