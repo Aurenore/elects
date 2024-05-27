@@ -13,6 +13,7 @@ import torch
 from tqdm import tqdm
 from utils.losses.early_reward_loss import EarlyRewardLoss
 from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss, sample_three_uniform_numbers
+from utils.losses.daily_reward_loss import DailyRewardLoss
 import sklearn.metrics
 import pandas as pd
 import wandb
@@ -101,6 +102,8 @@ def main():
         alpha4 = 1-config.alpha1-config.alpha2-config.alpha3
         config.update({"alpha4": alpha4})
         criterion = StoppingTimeProximityLoss(alphas=[config.alpha1, config.alpha2, config.alpha3, config.alpha4], weight=class_weights)
+    elif config.loss == "daily_reward":
+        criterion = DailyRewardLoss(alpha=config.alpha, weight=class_weights)
     else: 
         print(f"loss {config.loss} not recognized, loss set to default: early_reward")
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
@@ -140,7 +143,7 @@ def main():
             classification_loss = stats["classification_loss"].mean()
             earliness_reward = stats["earliness_reward"].mean()
             earliness = 1 - (stats["t_stop"].mean() / (config.sequencelength - 1))
-            harmonic_mean = harmonic_mean_score(accuracy, stats["classification_earliness"])
+            harmonic_mean = harmonic_mean_score(accuracy, earliness)
 
             # ----------------------------- LOGGING -----------------------------
             dict_results_epoch = {
@@ -155,13 +158,17 @@ def main():
                     "elects_earliness": earliness,
                     "classification_loss": classification_loss,
                     "earliness_reward": earliness_reward,
-                    "classification_earliness": stats["classification_earliness"],
                     "harmonic_mean": harmonic_mean,
             }
             if config.loss == "stopping_time_proximity":
                 dict_results_epoch.update({
                     "proximity_reward": stats["proximity_reward"].mean(),
                     "wrong_pred_penalty": stats["wrong_pred_penalty"].mean(),
+                    })
+            elif config.loss == "daily_reward":
+                dict_results_epoch.update({
+                    "timestamps_left_mean": stats["timestamps_left"].mean(dim=0),
+                    "timestamps_left_std": stats["timestamps_left"].std(dim=0),
                     })
             train_stats.append(copy.deepcopy(dict_results_epoch))
             

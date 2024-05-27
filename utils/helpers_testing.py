@@ -82,8 +82,7 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
     # list of dicts to dict of lists
     stats = {k: np.vstack([dic[k] for dic in stats]) for k in stats[0]}
     stats["seqlengths"] = torch.cat(slengths).numpy()
-    stats["classification_earliness"] = np.mean(stats["t_stop"].flatten()/stats["seqlengths"])
-
+    
     return np.stack(losses).mean(), stats
 
 

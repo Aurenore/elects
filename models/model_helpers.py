@@ -41,7 +41,7 @@ def get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn
     
 
 def get_t_stop_from_daily_timestamps(timestamps_left, threshold=5):
-    # t_stop is the time at which the model stops. It is the first time the timestamps_left is strictly smaller than 1
+    # t_stop is the time at which the model stops. It is the first time the timestamps_left is strictly smaller than threshold
     batchsize, sequencelength = timestamps_left.shape
     time_smaller_than_1 = (timestamps_left < threshold).int()
     t_stop = torch.argmax(time_smaller_than_1, dim=1) # shape: (batchsize,)
