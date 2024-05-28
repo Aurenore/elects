@@ -20,11 +20,10 @@ class DailyRewardLoss(nn.Module):
         if alpha_decay is not None:
             self.alpha_decay_max = alpha_decay[0]
             self.alpha_decay_min = alpha_decay[1]
-            self.epoch_i = 0 # epoch counter
             self.epochs = epochs
             
 
-    def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False):
+    def forward(self, log_class_probabilities, timestamps_left, y_true, epoch_i, return_stats=False):
         N, T, C = log_class_probabilities.shape
 
         # equation 4, right term
@@ -42,8 +41,7 @@ class DailyRewardLoss(nn.Module):
 
         # equation 4
         if hasattr(self, "alpha_decay_max"):
-            self.epoch_i += 1
-            self.alpha = self.alpha_decay_min + (self.alpha_decay_max - self.alpha_decay_min) * (1 - self.epoch_i/self.epochs)
+            self.alpha = self.alpha_decay_min + (self.alpha_decay_max - self.alpha_decay_min) * (1 - epoch_i/self.epochs)
         loss = self.alpha * classification_loss - (1-self.alpha) * earliness_reward
 
         if return_stats:
