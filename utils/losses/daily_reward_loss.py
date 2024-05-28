@@ -32,8 +32,7 @@ class DailyRewardLoss(nn.Module):
             stats = dict(
                 classification_loss=classification_loss.cpu().detach().numpy(),
                 earliness_reward=earliness_reward.cpu().detach().numpy(),
-                timestamps_left_mean=timestamps_left.mean(dim=0).cpu().detach().numpy(),
-                timestamps_left_std=timestamps_left.std(dim=0).cpu().detach().numpy()
+                timestamps_left=timestamps_left.cpu().detach().numpy(),
             )
             return loss, stats
         else:

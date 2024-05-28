@@ -95,3 +95,19 @@ def plot_spectral_bands(idx, test_ds, doys_dict_test, class_names, fig, ax, pale
     print(f"Sample {id_} has label {class_names[y[0]]}")  # Ensure class_names is accessible
     fig.tight_layout()
     return fig, ax
+
+
+def plot_timestamps_left(stats, ax_timestamps, fig_timestamps):
+    timestamps_left_mean = stats["timestamps_left"].mean(axis=0)
+    timestamps_left_std = stats["timestamps_left"].std(axis=0)
+    # plot mean and std
+    ax_timestamps.plot(timestamps_left_mean, label="mean")
+    ax_timestamps.fill_between(range(len(timestamps_left_mean)), timestamps_left_mean - timestamps_left_std,
+                              timestamps_left_mean + timestamps_left_std, alpha=0.2, label="std")
+    ax_timestamps.set_xlabel("day of year")
+    ax_timestamps.set_ylabel("timestamps left")
+    ax_timestamps.set_title("Timestamps left")
+    ax_timestamps.legend()
+    ax_timestamps.grid()
+    
+    return fig_timestamps, ax_timestamps

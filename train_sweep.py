@@ -17,7 +17,7 @@ from utils.losses.daily_reward_loss import DailyRewardLoss
 import sklearn.metrics
 import pandas as pd
 import wandb
-from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times
+from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times, plot_timestamps_left
 from utils.doy import get_doys_dict_test, get_doy_stop, create_sorted_doys_dict_test, get_approximated_doys_dict
 from utils.helpers_training import parse_args_sweep, train_epoch
 from utils.helpers_testing import test_epoch
@@ -188,13 +188,8 @@ def main():
                 # plot the timestamps left
                 if config.loss == "daily_reward":
                     fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
-                    ax_timestamps.plot(stats["timestamps_left_mean"], label="mean")
-                    ax_timestamps.fill_between(range(config.sequencelength), stats["timestamps_left_mean"] - stats["timestamps_left_std"], stats["timestamps_left_mean"] + stats["timestamps_left_std"], alpha=0.3, label="std")
-                    ax_timestamps.set_title("Timestamps left")
-                    ax_timestamps.set_xlabel("t")
-                    ax_timestamps.set_ylabel("timestamps left")
-                    ax_timestamps.legend()
-                    dict_results_epoch["timestamps_left"] = wandb.Image(fig_timestamps)
+                    fig_timestamps, _ = plot_timestamps_left(stats, ax_timestamps, fig_timestamps)
+                    dict_results_epoch["timestamps_left_plot"] = wandb.Image(fig_timestamps)
                     plt.close(fig_timestamps)
             
             wandb.log(dict_results_epoch)
