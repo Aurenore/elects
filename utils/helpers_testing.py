@@ -7,7 +7,7 @@ import numpy as np
 from utils.metrics import harmonic_mean_score
 import sklearn.metrics
 
-def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0], return_id:bool=False, daily_timestamps:bool=False):
+def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0], return_id:bool=False, daily_timestamps:bool=False, **kwargs):
     model.eval()
 
     stats = []
@@ -63,7 +63,7 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
                 t_stop = torch.where(~unpredicted_seq_mask, t_stop_temp, t_stop)
                 i+=1
 
-        loss, stat = criterion(log_class_probabilities, stopping_criteria, y_true, return_stats=True)
+        loss, stat = criterion(log_class_probabilities, stopping_criteria, y_true, return_stats=True, **kwargs)
         stat["loss"] = loss.cpu().detach().numpy()
         # depending of the model, we define the probability of stopping or the timestamps left as the stopping criteria
         if not daily_timestamps:

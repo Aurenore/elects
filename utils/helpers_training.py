@@ -56,7 +56,7 @@ def parse_args_sweep():
     return args
 
 
-def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_list:list=[0]):
+def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_list:list=[0], **kwargs):
     losses = []
     model.train()
     for batch in dataloader:
@@ -66,8 +66,8 @@ def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_l
             X, y_true = X.to(device), y_true.to(device)
             dict_padding = {"extra_padding": extra_padding}
             log_class_probabilities, stopping_criteria = model(X, **dict_padding)
-
-            loss = criterion(log_class_probabilities, stopping_criteria, y_true)
+            
+            loss = criterion(log_class_probabilities, stopping_criteria, y_true, **kwargs)
 
             if not loss.isnan().any():
                 loss.backward()

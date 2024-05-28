@@ -23,8 +23,9 @@ class DailyRewardLoss(nn.Module):
             self.epochs = epochs
             
 
-    def forward(self, log_class_probabilities, timestamps_left, y_true, epoch_i, return_stats=False):
+    def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False, **kwargs):
         N, T, C = log_class_probabilities.shape
+        epoch = kwargs.get("epoch", 0)
 
         # equation 4, right term
         t = torch.ones(N, T, device=log_class_probabilities.device) * \
@@ -41,7 +42,7 @@ class DailyRewardLoss(nn.Module):
 
         # equation 4
         if hasattr(self, "alpha_decay_max"):
-            self.alpha = self.alpha_decay_min + (self.alpha_decay_max - self.alpha_decay_min) * (1 - epoch_i/self.epochs)
+            self.alpha = self.alpha_decay_min + (self.alpha_decay_max - self.alpha_decay_min) * (1 - epoch/self.epochs)
         loss = self.alpha * classification_loss - (1-self.alpha) * earliness_reward
 
         if return_stats:

@@ -128,8 +128,9 @@ def main():
     print("starting training...")
     with tqdm(range(start_epoch, config.epochs + 1)) as pbar:
         for epoch in pbar:
-            trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, extra_padding_list=extra_padding_list)
-            testloss, stats = test_epoch(model, testdataloader, criterion, config.device, extra_padding_list=extra_padding_list, return_id=test_ds.return_id, daily_timestamps=config.daily_timestamps)
+            dict_args = {"epoch": epoch}
+            trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, extra_padding_list=extra_padding_list, **dict_args)
+            testloss, stats = test_epoch(model, testdataloader, criterion, config.device, extra_padding_list=extra_padding_list, return_id=test_ds.return_id, daily_timestamps=config.daily_timestamps, **dict_args)
 
             # statistic logging and visualization...
             precision, recall, fscore, support = sklearn.metrics.precision_recall_fscore_support(
