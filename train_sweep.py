@@ -165,11 +165,6 @@ def main():
                     "proximity_reward": stats["proximity_reward"].mean(),
                     "wrong_pred_penalty": stats["wrong_pred_penalty"].mean(),
                     })
-            elif config.loss == "daily_reward":
-                dict_results_epoch.update({
-                    "timestamps_left_mean": stats["timestamps_left"].mean(dim=0),
-                    "timestamps_left_std": stats["timestamps_left"].std(dim=0),
-                    })
             train_stats.append(copy.deepcopy(dict_results_epoch))
             
             # update for wandb format
@@ -189,6 +184,18 @@ def main():
                 fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names)
                 dict_results_epoch["boxplot"] = wandb.Image(fig_boxplot)
                 plt.close(fig_boxplot)
+                
+                # plot the timestamps left
+                if config.loss == "daily_reward":
+                    fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
+                    ax_timestamps.plot(stats["timestamps_left_mean"], label="mean")
+                    ax_timestamps.fill_between(range(config.sequencelength), stats["timestamps_left_mean"] - stats["timestamps_left_std"], stats["timestamps_left_mean"] + stats["timestamps_left_std"], alpha=0.3, label="std")
+                    ax_timestamps.set_title("Timestamps left")
+                    ax_timestamps.set_xlabel("t")
+                    ax_timestamps.set_ylabel("timestamps left")
+                    ax_timestamps.legend()
+                    dict_results_epoch["timestamps_left"] = wandb.Image(fig_timestamps)
+                    plt.close(fig_timestamps)
             
             wandb.log(dict_results_epoch)
 
