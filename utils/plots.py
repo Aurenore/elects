@@ -103,11 +103,12 @@ def plot_timestamps_left(stats, ax_timestamps, fig_timestamps):
     # plot mean and std
     ax_timestamps.plot(timestamps_left_mean, label="mean")
     ax_timestamps.fill_between(range(len(timestamps_left_mean)), timestamps_left_mean - timestamps_left_std,
-                              timestamps_left_mean + timestamps_left_std, alpha=0.2, label="std")
+                                timestamps_left_mean + timestamps_left_std, alpha=0.2, label="std")
     ax_timestamps.set_xlabel("day of year")
     ax_timestamps.set_ylabel("timestamps left")
     ax_timestamps.set_title("Timestamps left")
+    ax_timestamps.set_ylim(0, max(150, timestamps_left_mean.max()+5)) 
     ax_timestamps.legend()
-    ax_timestamps.grid()
+    ax_timestamps.grid()    
     
     return fig_timestamps, ax_timestamps

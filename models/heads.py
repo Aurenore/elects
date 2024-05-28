@@ -30,14 +30,15 @@ class DecisionHead(torch.nn.Module):
 
 class DecisionHeadDay(torch.nn.Module):
     
-    def __init__(self, hidden_dims) -> None:
+    def __init__(self, hidden_dims, day_head_init_bias:float=None) -> None:
         super(DecisionHeadDay, self).__init__()
         self.projection = nn.Sequential(
             nn.Linear(hidden_dims, 1, bias=True),
             nn.Sigmoid()
         )
         # initialize bias to predict late in first epochs
-        # torch.nn.init.normal_(self.projection[0].bias, mean=15, std=5)
+        if day_head_init_bias is not None:
+            torch.nn.init.normal_(self.projection[0].bias, mean=day_head_init_bias, std=1e-1)
 
     def forward(self, x):
         x = self.projection(x).squeeze(2)

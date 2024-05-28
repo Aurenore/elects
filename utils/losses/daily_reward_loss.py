@@ -3,11 +3,26 @@ from torch import nn
 from utils.losses.loss_helpers import probability_correct_class
 
 class DailyRewardLoss(nn.Module):
-    def __init__(self, alpha=0.5, weight=None):
+    def __init__(self, alpha=0.5, weight=None, alpha_decay: list=None, epochs: int=100):
+        """_summary_
+
+        Args:
+            alpha (float, optional): _description_. Defaults to 0.5.
+            weight (list, optional): weight for each class, shape: (nclasses). Defaults to None.
+            alpha_decay (list, optional): contains [alpha_decay_max, alpha_decay_min]. Through the epochs, starts at alpha_decay_max
+                        and get closer to alpha_decay_min. Defaults to None.
+        """
         super(DailyRewardLoss, self).__init__()
 
         self.negative_log_likelihood = nn.NLLLoss(reduction="none", weight=weight)
         self.alpha = alpha
+        
+        if alpha_decay is not None:
+            self.alpha_decay_max = alpha_decay[0]
+            self.alpha_decay_min = alpha_decay[1]
+            self.epoch_i = 0 # epoch counter
+            self.epochs = epochs
+            
 
     def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False):
         N, T, C = log_class_probabilities.shape
@@ -26,6 +41,9 @@ class DailyRewardLoss(nn.Module):
         classification_loss = cross_entropy.sum(1).mean(0)
 
         # equation 4
+        if hasattr(self, "alpha_decay_max"):
+            self.epoch_i += 1
+            self.alpha = self.alpha_decay_min + (self.alpha_decay_max - self.alpha_decay_min) * (1 - self.epoch_i/self.epochs)
         loss = self.alpha * classification_loss - (1-self.alpha) * earliness_reward
 
         if return_stats:

@@ -11,7 +11,7 @@ from models.heads import ClassificationHead, DecisionHeadDay
 
 
 class DailyEarlyRNN(nn.Module):
-    def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70):
+    def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, day_head_init_bias: float=None):
         super(DailyEarlyRNN, self).__init__()
         # input transformations
         self.intransforms = nn.Sequential(
@@ -24,7 +24,7 @@ class DailyEarlyRNN(nn.Module):
 
         # Heads
         self.classification_head = ClassificationHead(hidden_dims, nclasses)
-        self.stopping_decision_head = DecisionHeadDay(hidden_dims)
+        self.stopping_decision_head = DecisionHeadDay(hidden_dims, day_head_init_bias)
 
     def forward(self, x, **kwargs):
         if self.incremental_evaluation:
