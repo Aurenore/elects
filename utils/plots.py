@@ -107,7 +107,7 @@ def plot_timestamps_left(stats, ax_timestamps, fig_timestamps):
     ax_timestamps.set_xlabel("day of year")
     ax_timestamps.set_ylabel("timestamps left")
     ax_timestamps.set_title("Timestamps left")
-    ax_timestamps.set_ylim(0, max(150, timestamps_left_mean.max()+5)) 
+    ax_timestamps.set_ylim(0, max(150, timestamps_left_mean.max()+timestamps_left_std.max())) 
     ax_timestamps.legend()
     ax_timestamps.grid()    
     

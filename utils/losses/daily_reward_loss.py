@@ -14,7 +14,8 @@ class DailyRewardLoss(nn.Module):
         """
         super(DailyRewardLoss, self).__init__()
 
-        self.negative_log_likelihood = nn.NLLLoss(reduction="none", weight=weight)
+        self.weight = weight
+        self.negative_log_likelihood = nn.NLLLoss(reduction="none", weight=self.weight)
         self.alpha = alpha
         
         if alpha_decay is not None:
@@ -33,7 +34,7 @@ class DailyRewardLoss(nn.Module):
         log_class_probabilities_at_t_plus_zt = log_class_prob_at_t_plus_zt(log_class_probabilities, timestamps_left)
 
         # earliness reward 
-        earliness_reward = probability_correct_class(log_class_probabilities_at_t_plus_zt, y_true) * (1-t/T) * (1-timestamps_left.float()/T)
+        earliness_reward = probability_correct_class(log_class_probabilities_at_t_plus_zt, y_true, weight=self.weight) * (1-t/T) * (1-timestamps_left.float()/T)
         earliness_reward = earliness_reward.sum(1).mean(0)
 
         # equation 4 left term

@@ -29,7 +29,7 @@ def main():
     # ----------------------------- CONFIGURATION -----------------------------
     wandb.init(
         notes="ELECTS with new cost function",
-        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp", "alphas", "with bias init"],
+        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp", "alphas", "with bias init", "with weight in earliness reward"],
     )
     config = wandb.config
     # only use extra padding if tempcnn
