@@ -45,7 +45,8 @@ def get_t_stop_from_daily_timestamps(timestamps_left, threshold=5):
     batchsize, sequencelength = timestamps_left.shape
     time_smaller_than_1 = (timestamps_left < threshold).int()
     t_stop = torch.argmax(time_smaller_than_1, dim=1) # shape: (batchsize,)
-    # for t_stop==0 and time_smaller_than_1==0, set t_stop to sequencelength-1
-    t_stop = torch.where(t_stop == 0, torch.tensor(sequencelength-1).to(t_stop.device), t_stop)   
+    # for t_stop==0 and time_smaller_than_1==0, set t_stop to sequencelength-1 (for the case where timestamps_left is always larger than threshold)
+    idx = torch.where((t_stop==0) & (time_smaller_than_1[:, 0]==0))
+    t_stop[idx] = sequencelength-1   
 
     return t_stop
