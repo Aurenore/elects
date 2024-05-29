@@ -10,7 +10,7 @@ class EarlyRewardLoss(nn.Module):
         self.alpha = alpha
         self.epsilon = epsilon
 
-    def forward(self, log_class_probabilities, probability_stopping, y_true, return_stats=False):
+    def forward(self, log_class_probabilities, probability_stopping, y_true, return_stats=False, **kwargs):
         N, T, C = log_class_probabilities.shape
 
         # equation 3

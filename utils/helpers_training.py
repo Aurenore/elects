@@ -15,15 +15,15 @@ def parse_args():
     parser.add_argument('--backbonemodel', type=str, default="LSTM", choices=["LSTM", "TempCNN"], help="backbone model")
     parser.add_argument('--dataset', type=str, default="breizhcrops", choices=["bavariancrops","breizhcrops", "ghana", "southsudan","unitedstates"], help="dataset")
     parser.add_argument('--alpha', type=float, default=0.5, help="trade-off parameter of earliness and accuracy (eq 6): "
-                                                                 "1=full weight on accuracy; 0=full weight on earliness")
+                                                                "1=full weight on accuracy; 0=full weight on earliness")
     parser.add_argument('--epsilon', type=float, default=10, help="additive smoothing parameter that helps the "
-                                                                  "model recover from too early classificaitons (eq 7)")
+                                                                "model recover from too early classificaitons (eq 7)")
     parser.add_argument('--learning-rate', type=float, default=1e-3, help="Optimizer learning rate")
     parser.add_argument('--weight-decay', type=float, default=0, help="weight_decay")
     parser.add_argument('--patience', type=int, default=30, help="Early stopping patience")
     parser.add_argument('--device', type=str, default="cuda" if torch.cuda.is_available() else "cpu",
                         choices=["cuda", "cpu"], help="'cuda' (GPU) or 'cpu' device to run the code. "
-                                                     "defaults to 'cuda' if GPU is available, otherwise 'cpu'")
+                                                    "defaults to 'cuda' if GPU is available, otherwise 'cpu'")
     parser.add_argument('--epochs', type=int, default=100, help="number of training epochs")
     parser.add_argument('--sequencelength', type=int, default=70, help="sequencelength of the time series. If samples are shorter, "
                                                                 "they are zero-padded until this length; "
@@ -32,8 +32,8 @@ def parse_args():
     parser.add_argument('--hidden-dims', type=int, default=64, help="number of hidden dimensions in the backbone model")
     parser.add_argument('--batchsize', type=int, default=256, help="number of samples per batch")
     parser.add_argument('--dataroot', type=str, default=os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data"), help="directory to download the "
-                                                                                 "BavarianCrops dataset (400MB)."
-                                                                                 "Defaults to home directory.")
+                                                                                "BavarianCrops dataset (400MB)."
+                                                                                "Defaults to home directory.")
     parser.add_argument('--snapshot', type=str, default="snapshots/model.pth",
                         help="pytorch state dict snapshot file")
     parser.add_argument('--left-padding', type=bool, default=False, help="left padding for the TempCNN model")

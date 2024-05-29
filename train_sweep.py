@@ -73,7 +73,8 @@ def main():
         
     # ----------------------------- SET UP MODEL -----------------------------
     if config.decision_head == "day":
-        model = DailyEarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, day_head_init_bias=config.day_head_init_bias).to(config.device)
+        dict_model = {"start_decision_head_training": config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0,}
+        model = DailyEarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, day_head_init_bias=config.day_head_init_bias, **dict_model).to(config.device)
     else:
         model = EarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, left_padding=config.left_padding).to(config.device)
     wandb.config.update({"nb_parameters": count_parameters(model)})
@@ -103,7 +104,7 @@ def main():
         config.update({"alpha4": alpha4})
         criterion = StoppingTimeProximityLoss(alphas=[config.alpha1, config.alpha2, config.alpha3, config.alpha4], weight=class_weights)
     elif config.loss == "daily_reward":
-        criterion = DailyRewardLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs)
+        criterion = DailyRewardLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0)
     else: 
         print(f"loss {config.loss} not recognized, loss set to default: early_reward")
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
@@ -174,7 +175,8 @@ def main():
             dict_results_epoch.update({"conf_mat" : wandb.plot.confusion_matrix(probs=None,
                             y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
                             class_names=class_names, title="Confusion Matrix"),
-                            "loss": {"trainloss": trainloss, "testloss": testloss},})
+                            "loss": {"trainloss": trainloss, "testloss": testloss},
+                            "alpha": criterion.alpha,})
             if epoch % 5 == 1:
                 fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
                 if config.daily_timestamps:

@@ -11,7 +11,7 @@ from models.heads import ClassificationHead, DecisionHeadDay
 
 
 class DailyEarlyRNN(nn.Module):
-    def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, day_head_init_bias: float=None):
+    def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, day_head_init_bias: float=None, **kwargs):
         super(DailyEarlyRNN, self).__init__()
         # input transformations
         self.intransforms = nn.Sequential(
@@ -25,6 +25,12 @@ class DailyEarlyRNN(nn.Module):
         # Heads
         self.classification_head = ClassificationHead(hidden_dims, nclasses)
         self.stopping_decision_head = DecisionHeadDay(hidden_dims, day_head_init_bias)
+        
+        # if kwargs contains the "start_decision_head_training" key, then the training of the decision head will start at epoch "start_decision_head_training"
+        if "start_decision_head_training" in kwargs:
+            self.start_decision_head_training = kwargs.get("start_decision_head_training", 0)
+        else: 
+            self.start_decision_head_training = 0
 
     def forward(self, x, **kwargs):
         if self.incremental_evaluation:
@@ -36,7 +42,14 @@ class DailyEarlyRNN(nn.Module):
         else:
             outputs = output_tupple # shape : (batch_size, sequencelength, hidden_dims)
         log_class_probabilities = self.classification_head(outputs)
-        timestamps_left_before_predictions= self.stopping_decision_head(outputs)
+        
+        # if the epoch is greater than the start_decision_head_training, then the decision head is trained. 
+        # Otherwise, the timestamps_left_before_predictions are zeros
+        epoch = kwargs.get("epoch", 0)
+        if epoch>=self.start_decision_head_training:        
+            timestamps_left_before_predictions= self.stopping_decision_head(outputs)
+        else:
+            timestamps_left_before_predictions = torch.zeros((x.shape[0], x.shape[1]), device=x.device) 
 
         return log_class_probabilities, timestamps_left_before_predictions
 

@@ -18,7 +18,7 @@ class StoppingTimeProximityLoss(nn.Module):
         self.alphas = alphas
         self.weight = weight
 
-    def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False):
+    def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False, **kwargs):
         N, T, C = log_class_probabilities.shape
 
         # classification loss
