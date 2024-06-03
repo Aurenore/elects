@@ -37,8 +37,15 @@ class DailyRewardLoss(nn.Module):
                 torch.arange(T).type(torch.FloatTensor).to(log_class_probabilities.device)
         log_class_probabilities_at_t_plus_zt = log_class_prob_at_t_plus_zt(log_class_probabilities, timestamps_left)
 
+        # compute alpha
+        if hasattr(self, "alpha_decay_max"):
+            if epoch >= self.start_decision_head_training:
+                # alpha goes from alpha_decay_max to alpha_decay_min linearly
+                self.alpha = self.alpha_decay_min + (self.alpha_decay_max - self.alpha_decay_min) * \
+                    (1 - (epoch-self.start_decision_head_training)/(self.epochs-self.start_decision_head_training))
+                
         # earliness reward 
-        if epoch>=self.start_decision_head_training:
+        if epoch>=self.start_decision_head_training and self.alpha<1.-1e-8:
             earliness_reward = probability_correct_class(log_class_probabilities_at_t_plus_zt, y_true, weight=self.weight) * (1-t/T) * (1-timestamps_left.float()/T)
             earliness_reward = earliness_reward.sum(1).mean(0)
         else:
@@ -46,18 +53,12 @@ class DailyRewardLoss(nn.Module):
             earliness_reward = torch.tensor(0.0, device=log_class_probabilities.device) 
 
         # equation 4 left term
-        if epoch>=self.start_decision_head_training:
+        if epoch>=self.start_decision_head_training and self.alpha<1.-1e-8:
             cross_entropy = self.negative_log_likelihood(log_class_probabilities_at_t_plus_zt.view(N*T,C), y_true.view(N*T)).view(N,T)
         else: 
             cross_entropy = self.negative_log_likelihood(log_class_probabilities.view(N*T,C), y_true.view(N*T)).view(N,T)
         classification_loss = cross_entropy.sum(1).mean(0)
 
-        # equation 4
-        if hasattr(self, "alpha_decay_max"):
-            if epoch >= self.start_decision_head_training:
-                self.alpha = self.alpha_decay_min + (self.alpha_decay_max - self.alpha_decay_min) * (1 - (epoch-self.start_decision_head_training)/(self.epochs-self.start_decision_head_training))
-            else:
-                self.alpha = 1.
         loss = self.alpha * classification_loss - (1-self.alpha) * earliness_reward
 
         if return_stats:
