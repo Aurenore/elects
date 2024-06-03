@@ -86,11 +86,11 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
     return np.stack(losses).mean(), stats
 
 
-def test_dataset(model, test_ds, criterion, device, batch_size, extra_padding_list:list=[0], return_id:bool=False):
+def test_dataset(model, test_ds, criterion, device, batch_size, extra_padding_list:list=[0], return_id:bool=False, daily_timestamps:bool=False, **kwargs):
     model.eval()
     with torch.no_grad():
         dataloader = DataLoader(test_ds, batch_size=batch_size)
-        loss, stats = test_epoch(model, dataloader, criterion, device, extra_padding_list=extra_padding_list, return_id=return_id)
+        loss, stats = test_epoch(model, dataloader, criterion, device, extra_padding_list=extra_padding_list, return_id=return_id, daily_timestamps=daily_timestamps, **kwargs)
     return loss, stats
 
 
@@ -106,17 +106,17 @@ def get_test_stats(stats, testloss, args):
     classification_loss = stats["classification_loss"].mean()
     earliness_reward = stats["earliness_reward"].mean()
     earliness = 1 - (stats["t_stop"].mean() / (args.sequencelength - 1))
-    harmonic_mean = harmonic_mean_score(accuracy, stats["classification_earliness"])
+    harmonic_mean = harmonic_mean_score(accuracy, earliness)
     test_stats = {
         "test_loss": testloss,
-        "classification_loss": classification_loss,
-        "earliness_reward": earliness_reward,
-        "earliness": earliness,
         "accuracy": accuracy,
         "precision": precision,
         "recall": recall,
         "fscore": fscore,
         "kappa": kappa,
+        "elects_earliness": earliness,
+        "classification_loss": classification_loss,
+        "earliness_reward": earliness_reward,
         "harmonic_mean": harmonic_mean,
     }
     return test_stats

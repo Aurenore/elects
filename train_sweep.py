@@ -96,6 +96,7 @@ def main():
         class_weights = train_ds.get_class_weights().to(config.device)
     else: 
         class_weights = None
+    config.update({"class_weights": class_weights.cpu().detach().numpy() if class_weights is not None else None})
 
     if config.loss == "early_reward":
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)

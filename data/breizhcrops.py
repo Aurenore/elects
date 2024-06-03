@@ -36,20 +36,26 @@ class BreizhCrops(Dataset):
                 frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
                 frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
                 self.ds = torch.utils.data.ConcatDataset([frh01, frh02])
+                self.labels_names = frh01.labels_names
             elif partition == "valid":
                 self.ds = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                self.labels_names = self.ds.labels_names
             elif partition == "eval":
                 self.ds = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                self.labels_names = self.ds.labels_names
         else:
             # because of the corrected flag, we need to load the datasets differently for the sizes to be reasonable
             if partition == "train":
                 self.ds = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                self.labels_names = self.ds.labels_names
             elif partition == "valid":
                 self.ds = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                self.labels_names = self.ds.labels_names
             elif partition == "eval":
                 frh03 = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
                 frh04 = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
                 self.ds = torch.utils.data.ConcatDataset([frh03, frh04])
+                self.labels_names = frh03.labels_names
 
         self.corrected = corrected
         self.daily_timestamps = daily_timestamps 
@@ -59,7 +65,6 @@ class BreizhCrops(Dataset):
             self.sequencelength = sequencelength
         self.return_id = return_id
         self.class_weights = None
-        self.labels_names = self.ds.labels_names
         self.nclasses = len(self.labels_names)
 
     def __len__(self):
