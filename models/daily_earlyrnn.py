@@ -46,10 +46,11 @@ class DailyEarlyRNN(nn.Module):
         # if the epoch is greater than the start_decision_head_training, then the decision head is trained. 
         # Otherwise, the timestamps_left_before_predictions are zeros
         epoch = kwargs.get("epoch", 0)
-        if epoch>=self.start_decision_head_training:        
+        alpha = kwargs.get("criterion_alpha", 0.5)
+        if epoch>=self.start_decision_head_training and alpha<1.-1e-8:        
             timestamps_left_before_predictions= self.stopping_decision_head(outputs)
         else:
-            timestamps_left_before_predictions = torch.zeros((x.shape[0], x.shape[1]), device=x.device) 
+            timestamps_left_before_predictions = torch.ones((x.shape[0], x.shape[1]), device=x.device)*364
 
         return log_class_probabilities, timestamps_left_before_predictions
 

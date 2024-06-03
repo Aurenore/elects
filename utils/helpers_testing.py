@@ -33,7 +33,7 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
         
         # by default, we predict the sequence with the smallest padding
         extra_padding = extra_padding_list[-1]
-        dict_padding = {"extra_padding": extra_padding}
+        dict_padding = {"extra_padding": extra_padding, "epoch": kwargs.get("epoch", 0), "criterion_alpha": criterion.alpha}
 
         # predict the sequence with the smallest padding
         log_class_probabilities, stopping_criteria, predictions_at_t_stop, t_stop = model.predict(X, **dict_padding)

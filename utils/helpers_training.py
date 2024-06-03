@@ -64,7 +64,7 @@ def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_l
             optimizer.zero_grad()
             X, y_true = batch
             X, y_true = X.to(device), y_true.to(device)
-            dict_padding = {"extra_padding": extra_padding}
+            dict_padding = {"extra_padding": extra_padding, "epoch": kwargs.get("epoch", 0), "criterion_alpha": criterion.alpha}
             log_class_probabilities, stopping_criteria = model(X, **dict_padding)
             
             loss = criterion(log_class_probabilities, stopping_criteria, y_true, **kwargs)
