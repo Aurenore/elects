@@ -3,7 +3,7 @@ from torch import nn
 from utils.losses.loss_helpers import probability_correct_class
 
 class ClassificationLoss(nn.Module):
-    def __init__(self, alpha=0.5, weight=None, alpha_decay: list=None, epochs: int=100, start_decision_head_training: int=0):
+    def __init__(self, weight=None):
         """_summary_
 
         Args:
