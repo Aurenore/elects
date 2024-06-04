@@ -14,6 +14,7 @@ from tqdm import tqdm
 from utils.losses.early_reward_loss import EarlyRewardLoss
 from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss, sample_three_uniform_numbers
 from utils.losses.daily_reward_loss import DailyRewardLoss
+from utils.losses.daily_reward_lin_regr_loss import DailyRewardLinRegrLoss
 import sklearn.metrics
 import pandas as pd
 import wandb
@@ -105,7 +106,13 @@ def main():
         config.update({"alpha4": alpha4})
         criterion = StoppingTimeProximityLoss(alphas=[config.alpha1, config.alpha2, config.alpha3, config.alpha4], weight=class_weights)
     elif config.loss == "daily_reward":
-        criterion = DailyRewardLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0)
+        criterion = DailyRewardLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs,\
+            start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0)
+    elif config.loss == "daily_reward_lin_regr":
+        dict_criterion = {k: v for k, v in config.items() if k in ["mu", "percentage_earliness_reward"]}
+        criterion = DailyRewardLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
+            start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
+            **dict_criterion)
     else: 
         print(f"loss {config.loss} not recognized, loss set to default: early_reward")
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
@@ -168,6 +175,11 @@ def main():
                     "proximity_reward": stats["proximity_reward"].mean(),
                     "wrong_pred_penalty": stats["wrong_pred_penalty"].mean(),
                     })
+            elif config.loss == "daily_reward_lin_regr":
+                dict_results_epoch.update({
+                    "lin_regr_zt_loss": stats["lin_regr_zt_loss"].mean(),
+                    "alphas": criterion.alphas.cpu().detach().numpy(),
+                    })
             train_stats.append(copy.deepcopy(dict_results_epoch))
             
             # update for wandb format
@@ -177,7 +189,7 @@ def main():
                             y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
                             class_names=class_names, title="Confusion Matrix"),
                             "loss": {"trainloss": trainloss, "testloss": testloss},
-                            "alpha": criterion.alpha,})
+                            "alpha": criterion.alpha,},)
             if epoch % 5 == 1:
                 fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
                 if config.daily_timestamps:
@@ -190,7 +202,7 @@ def main():
                 plt.close(fig_boxplot)
                 
                 # plot the timestamps left
-                if config.loss == "daily_reward":
+                if config.loss == "daily_reward" or config.loss == "daily_reward_lin_regr":
                     fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
                     fig_timestamps, _ = plot_timestamps_left(stats, ax_timestamps, fig_timestamps)
                     dict_results_epoch["timestamps_left_plot"] = wandb.Image(fig_timestamps)
@@ -231,7 +243,6 @@ def main():
                 if not_improved > config.patience:
                     print(f"stopping training. testloss {testloss:.2f} did not improve in {config.patience} epochs.")
                     break
-
 
     wandb.finish()
 

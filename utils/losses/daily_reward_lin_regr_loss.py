@@ -3,7 +3,7 @@ from torch import nn
 from utils.losses.loss_helpers import probability_correct_class, log_class_prob_at_t_plus_zt
 
 class DailyRewardLinRegrLoss(nn.Module):
-    def __init__(self, alpha:float=1., weight=None, alpha_decay: list=None, epochs: int=100, start_decision_head_training: int=0, mu: float=150.):
+    def __init__(self, alpha:float=1., weight=None, alpha_decay: list=None, epochs: int=100, start_decision_head_training: int=0, **kwargs):
         """_summary_
 
         Args:
@@ -26,8 +26,8 @@ class DailyRewardLinRegrLoss(nn.Module):
             self.epochs = epochs
         
         self.start_decision_head_training = start_decision_head_training
-        self.mu = mu
-            
+        self.mu = kwargs.get("mu", 150.)
+        self.percentage_earliness_reward = kwargs.get("percentage_earliness_reward", 0.5)
 
     def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False, **kwargs):
         N, T, C = log_class_probabilities.shape
@@ -62,7 +62,8 @@ class DailyRewardLinRegrLoss(nn.Module):
         classification_loss = cross_entropy.sum(1).mean(0)
 
         # final loss
-        loss = self.alpha*classification_loss - (1.-self.alpha/2.)*earliness_reward + (1.-self.alpha/2.)*lin_regr_zt_loss
+        self.alphas = torch.tensor([self.alpha, 1.-self.alpha*self.percentage_earliness_reward, 1.-self.alpha*(1.-self.percentage_earliness_reward)], device=log_class_probabilities.device)
+        loss = self.alphas[0]*classification_loss - self.alphas[1]*earliness_reward + self.alphas[2]*lin_regr_zt_loss
 
         if return_stats:
             stats = dict(
