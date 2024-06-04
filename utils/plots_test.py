@@ -169,3 +169,34 @@ def plot_probability_stopping(stats, index, ax):
     ax.legend()
     ax.set_title("Probability stopping")
     return ax
+
+
+def plot_class_prob_wrt_time(fig, ax, label, class_prob, y_true, class_names, alpha=0.2):
+    # for this label, compute the mean probability and the std through time 
+    mean_prob = class_prob[y_true == label].mean(axis=0)
+    std_prob = class_prob[y_true == label].std(axis=0)
+    # Loop through each dimension to plot separately
+    for i in range(mean_prob.shape[1]):
+        current_label = class_names[i]
+        if i==label:
+            current_label = f"{current_label} (true)"
+        ax.plot(mean_prob[:, i], label=f"mean {current_label}")
+        ax.fill_between(range(mean_prob.shape[0]), 
+                        mean_prob[:, i] - std_prob[:, i], 
+                        mean_prob[:, i] + std_prob[:, i], 
+                        alpha=alpha, label=f"std {current_label}")
+
+    ax.set_title(f"{class_names[label]} class probability")
+    ax.set_xlabel("Time (day)")
+    ax.set_ylabel("Probability")
+    ax.legend()
+    ax.grid()
+    return fig, ax
+
+
+def plot_fig_class_prob_wrt_time(fig, axes, class_prob, y_true, class_names, alpha=0.2):
+    for label in range(len(class_names)):
+        plot_class_prob_wrt_time(fig, axes[label], label, class_prob, y_true, class_names, alpha)
+    fig.suptitle("Class probabilities through time", fontsize=16, y=1.)
+    fig.tight_layout()
+    return fig, axes
