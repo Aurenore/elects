@@ -109,10 +109,11 @@ def main():
         criterion = DailyRewardLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs,\
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0)
     elif config.loss == "daily_reward_lin_regr":
-        dict_criterion = {k: v for k, v in config.items() if k in ["mu", "percentage_earliness_reward"]}
-        criterion = DailyRewardLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
-            start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
-            **dict_criterion)
+            dict_criterion = {"mu": config.mu if hasattr(config, "mu") else 150., \
+                    "percentage_earliness_reward": config.percentage_earliness_reward if hasattr(config, "percentage_earliness_reward") else 0.9,}
+            criterion = DailyRewardLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
+                start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
+                **dict_criterion)
     else: 
         print(f"loss {config.loss} not recognized, loss set to default: early_reward")
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
