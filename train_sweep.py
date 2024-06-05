@@ -18,7 +18,8 @@ from utils.losses.daily_reward_lin_regr_loss import DailyRewardLinRegrLoss, MU_D
 import sklearn.metrics
 import pandas as pd
 import wandb
-from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times, plot_timestamps_left
+from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times, plot_timestamps_left, \
+    plot_timestamps_left_per_class
 from utils.plots_test import plot_fig_class_prob_wrt_time_with_mus
 from utils.doy import get_doys_dict_test, get_doy_stop, create_sorted_doys_dict_test, get_approximated_doys_dict
 from utils.helpers_training import parse_args_sweep, train_epoch
