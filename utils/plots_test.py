@@ -230,3 +230,19 @@ def plot_fig_class_prob_wrt_time_one_sample(fig, axes, class_prob, y_true, class
     fig.suptitle("Class probabilities through time", fontsize=16, y=1.)
     fig.tight_layout()
     return fig, axes
+
+
+def plot_fig_class_prob_wrt_time_with_mus(fig, axes, class_prob, y_true, class_names, mus, p_thresh, alpha=0.2):
+    fig, axes = plot_fig_class_prob_wrt_time(fig, axes, class_prob, y_true, class_names, alpha)
+    # for each ax i, plot a vertical line at mu_i and a horizontal line at p_tresh
+    for label in range(len(class_names)):
+        axes[label].axvline(mus[label], color="red", linestyle="--")
+        axes[label].axhline(p_thresh, color="black", linestyle="--") # Add labels for mus[label] and p_thresh
+        # Place text for mus[label] at the top of the axes (change 'top' to 'bottom' if you prefer it at the bottom)
+        axes[label].text(mus[label], axes[label].get_ylim()[1], f'$\mu = {mus[label]}$', va='top', ha='right', color='red')
+        # Place text for p_thresh at the far right of the axes (change 'right' to 'left' if you prefer it on the left side)
+        axes[label].text(axes[label].get_xlim()[1], p_thresh, f'$p_{{thresh}} = {p_thresh}$', va='bottom', ha='right', color='black')
+
+    fig.suptitle("Class probabilities through time", fontsize=16, y=1.)
+    fig.tight_layout()
+    return fig, axes
