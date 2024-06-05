@@ -14,17 +14,19 @@ from tqdm import tqdm
 from utils.losses.early_reward_loss import EarlyRewardLoss
 from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss, sample_three_uniform_numbers
 from utils.losses.daily_reward_loss import DailyRewardLoss
-from utils.losses.daily_reward_lin_regr_loss import DailyRewardLinRegrLoss
+from utils.losses.daily_reward_lin_regr_loss import DailyRewardLinRegrLoss, MU_DEFAULT
 import sklearn.metrics
 import pandas as pd
 import wandb
 from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times, plot_timestamps_left
+from utils.plots_test import plot_fig_class_prob_wrt_time_with_mus
 from utils.doy import get_doys_dict_test, get_doy_stop, create_sorted_doys_dict_test, get_approximated_doys_dict
 from utils.helpers_training import parse_args_sweep, train_epoch
 from utils.helpers_testing import test_epoch
 from utils.metrics import harmonic_mean_score
 from models.model_helpers import count_parameters
 import matplotlib.pyplot as plt
+from utils.extract_mu import extract_mu_thresh
 
 def main():
     # ----------------------------- CONFIGURATION -----------------------------
@@ -109,11 +111,13 @@ def main():
         criterion = DailyRewardLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs,\
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0)
     elif config.loss == "daily_reward_lin_regr":
-            dict_criterion = {"mu": config.mu if hasattr(config, "mu") else 150., \
-                    "percentage_earliness_reward": config.percentage_earliness_reward if hasattr(config, "percentage_earliness_reward") else 0.9,}
-            criterion = DailyRewardLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
-                start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
-                **dict_criterion)
+        mu = config.mu if hasattr(config, "mu") else MU_DEFAULT
+        mus = torch.ones(nclasses, device=config.device)*mu
+        dict_criterion = {"mus": mus, \
+                "percentage_earliness_reward": config.percentage_earliness_reward if hasattr(config, "percentage_earliness_reward") else 0.9,}
+        criterion = DailyRewardLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
+            start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
+            **dict_criterion)
     else: 
         print(f"loss {config.loss} not recognized, loss set to default: early_reward")
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
@@ -191,7 +195,7 @@ def main():
                             class_names=class_names, title="Confusion Matrix"),
                             "loss": {"trainloss": trainloss, "testloss": testloss},
                             "alpha": criterion.alpha,},)
-            if epoch % 5 == 1:
+            if epoch % 10 == 1:
                 fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
                 if config.daily_timestamps:
                     doys_stop = stats["t_stop"].squeeze()
@@ -202,12 +206,27 @@ def main():
                 dict_results_epoch["boxplot"] = wandb.Image(fig_boxplot)
                 plt.close(fig_boxplot)
                 
-                # plot the timestamps left
-                if config.loss == "daily_reward" or config.loss == "daily_reward_lin_regr":
+                # plot the timestamps left if config loss contains "daily_reward"
+                if "daily_reward" in config.loss:
                     fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
                     fig_timestamps, _ = plot_timestamps_left(stats, ax_timestamps, fig_timestamps)
                     dict_results_epoch["timestamps_left_plot"] = wandb.Image(fig_timestamps)
                     plt.close(fig_timestamps)
+                
+                if config.loss == "daily_reward_lin_regr":
+                    fig_prob_class, axes_prob_class = plt.subplots(figsize=(15, 7*len(class_names)), nrows=len(class_names), sharex=True)
+                    fig_prob_class, _ = plot_fig_class_prob_wrt_time_with_mus(fig_prob_class, axes_prob_class, \
+                        stats["class_probabilities"], stats["targets"][:, 0], class_names, mus, config.p_thresh, alpha=0.1)    
+                    dict_results_epoch["class_probabilities_wrt_time"] = wandb.Image(fig_prob_class)
+                    plt.close(fig_prob_class)
+                    
+            # udpate mus 
+            if config.loss == "daily_reward_lin_regr" and epoch==config.start_decision_head_training-1:
+                # compute the new mus from the classification probabilities
+                mus = extract_mu_thresh(stats["class_probabilities"], stats["targets"][:, 0], config.p_thresh)
+                criterion.update_mus(torch.tensor(mus, device=config.device))
+                dict_results_epoch.update({"mus": mus})
+                print(f"started training with earliness at epoch {epoch}. New parameter mus: \n{mus}")
             
             wandb.log(dict_results_epoch)
 
@@ -244,7 +263,7 @@ def main():
                 if not_improved > config.patience:
                     print(f"stopping training. testloss {testloss:.2f} did not improve in {config.patience} epochs.")
                     break
-
+                              
     wandb.finish()
 
 

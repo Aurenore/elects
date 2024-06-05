@@ -2,6 +2,8 @@ import torch
 from torch import nn
 from utils.losses.loss_helpers import probability_correct_class, log_class_prob_at_t_plus_zt
 
+MU_DEFAULT = 150.
+
 class DailyRewardLinRegrLoss(nn.Module):
     def __init__(self, alpha:float=1., weight=None, alpha_decay: list=None, epochs: int=100, start_decision_head_training: int=0, **kwargs):
         """_summary_
@@ -26,7 +28,8 @@ class DailyRewardLinRegrLoss(nn.Module):
             self.epochs = epochs
         
         self.start_decision_head_training = start_decision_head_training
-        self.mu = kwargs.get("mu", 150.)
+        # mus is a tensor of length nclasses, containing the mu for each class
+        self.mus = kwargs.get("mus", torch.ones(len(weight), device=weight.device)*MU_DEFAULT)
         self.percentage_earliness_reward = kwargs.get("percentage_earliness_reward", 0.5)
 
     def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False, **kwargs):
@@ -50,8 +53,8 @@ class DailyRewardLinRegrLoss(nn.Module):
             earliness_reward = probability_correct_class(log_class_probabilities_at_t_plus_zt, y_true, weight=self.weight) * (1-t/T) * (1-timestamps_left.float()/T)
             earliness_reward = earliness_reward.sum(1).mean(0)
             
-            lin_regr_zt_loss = lin_regr_zt(t, T, self.mu, timestamps_left.float())
-            lin_regr_zt_loss = lin_regr_zt_loss.sum(1).mean(0)
+            lin_regr_zt_loss = lin_regr_zt(t, T, self.mus, timestamps_left.float(), y_true) # (N, T)
+            lin_regr_zt_loss = lin_regr_zt_loss.sum(1).mean(0) # sum over time, mean over batch
         else:
             # if the decision head is not trained, the earliness reward is zero
             earliness_reward = torch.tensor(0.0, device=log_class_probabilities.device) 
@@ -77,6 +80,19 @@ class DailyRewardLinRegrLoss(nn.Module):
         else:
             return loss
         
+    def update_mus(self, mus):
+        self.mus = mus
+        
 
-def lin_regr_zt(t, T, mu, z_t):
-    return ((mu-t-z_t)/T)**2
+def lin_regr_zt(t, T, mus, z_t, y_true):
+    """ 
+    t: tensor of shape (N, T)
+    T: float 
+    mus: tensor of shape (C)
+    z_t: tensor of shape (N, T)
+    y_true: tensor of shape (N, T)
+    
+    OUTPUT: 
+    loss: tensor of shape (N, T), 
+    """
+    return  ((mus[y_true] - t - z_t)/T)**2
