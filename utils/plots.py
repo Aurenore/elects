@@ -97,13 +97,19 @@ def plot_spectral_bands(idx, test_ds, doys_dict_test, class_names, fig, ax, pale
     return fig, ax
 
 
-def plot_timestamps_left(stats, ax_timestamps, fig_timestamps):
-    timestamps_left_mean = stats["timestamps_left"].mean(axis=0)
-    timestamps_left_std = stats["timestamps_left"].std(axis=0)
+def plot_timestamps_left(stats, ax_timestamps, fig_timestamps, label_str=""):
+    # check if stats is a dictionary
+    if isinstance(stats, dict):
+        timestamps_left_mean = stats["timestamps_left"].mean(axis=0)
+        timestamps_left_std = stats["timestamps_left"].std(axis=0)
+    else:
+        timestamps_left_mean = stats.mean(axis=0)
+        timestamps_left_std = stats.std(axis=0)
+        
     # plot mean and std
-    ax_timestamps.plot(timestamps_left_mean, label="mean")
+    ax_timestamps.plot(timestamps_left_mean, label=label_str+"mean")
     ax_timestamps.fill_between(range(len(timestamps_left_mean)), timestamps_left_mean - timestamps_left_std,
-                                timestamps_left_mean + timestamps_left_std, alpha=0.2, label="std")
+                                timestamps_left_mean + timestamps_left_std, alpha=0.2, label=label_str+"std")
     ax_timestamps.set_xlabel("day of year")
     ax_timestamps.set_ylabel("timestamps left")
     ax_timestamps.set_title("Timestamps left")
@@ -112,3 +118,20 @@ def plot_timestamps_left(stats, ax_timestamps, fig_timestamps):
     ax_timestamps.grid()    
     
     return fig_timestamps, ax_timestamps
+
+
+def plot_timestamps_left_per_class(fig, ax, stats, nclasses, class_names, mus, ylim=365):
+    y_true = stats["targets"][:, 0]
+    timestamps_left = stats["timestamps_left"]
+    for label in range(nclasses):
+        idx = y_true == label
+        timestamps_left_label = timestamps_left[idx]
+        label_str = class_names[label] + " "
+        fig, ax = plot_timestamps_left(timestamps_left_label, ax, fig, label_str)
+        color_label = plt.gca().lines[-1].get_color()
+        ax.axvline(mus[label], linestyle="--", color=color_label)
+        ax.text(mus[label], ylim-10*label, label_str, va='top', ha='right', color=color_label)
+
+    ax.set_ylim(0, ylim)
+    fig.tight_layout()
+    return fig, ax

@@ -216,13 +216,18 @@ def main():
                 plt.close(fig_boxplot)
                 
                 # plot the timestamps left if config loss contains "daily_reward"
-                if "daily_reward" in config.loss:
+                if config.loss=="daily_reward":
                     fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
                     fig_timestamps, _ = plot_timestamps_left(stats, ax_timestamps, fig_timestamps)
                     dict_results_epoch["timestamps_left_plot"] = wandb.Image(fig_timestamps)
                     plt.close(fig_timestamps)
                 
                 if config.loss == "daily_reward_lin_regr":
+                    fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
+                    fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus)
+                    dict_results_epoch["timestamps_left_plot"] = wandb.Image(fig_timestamps)
+                    plt.close(fig_timestamps)
+            
                     fig_prob_class, axes_prob_class = plt.subplots(figsize=(15, 7*len(class_names)), nrows=len(class_names), sharex=True)
                     fig_prob_class, _ = plot_fig_class_prob_wrt_time_with_mus(fig_prob_class, axes_prob_class, \
                         stats["class_probabilities"], stats["targets"][:, 0], class_names, mus, config.p_thresh, alpha=0.1)    
