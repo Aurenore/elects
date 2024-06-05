@@ -112,7 +112,7 @@ def main():
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0)
     elif config.loss == "daily_reward_lin_regr":
         mu = config.mu if hasattr(config, "mu") else MU_DEFAULT
-        mus = torch.ones(nclasses, device=config.device)*mu
+        mus = torch.ones(nclasses)*mu
         dict_criterion = {"mus": mus, \
                 "percentage_earliness_reward": config.percentage_earliness_reward if hasattr(config, "percentage_earliness_reward") else 0.9,}
         criterion = DailyRewardLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
@@ -142,6 +142,15 @@ def main():
     print("starting training...")
     with tqdm(range(start_epoch, config.epochs + 1)) as pbar:
         for epoch in pbar:
+            # udpate mus 
+            if config.loss == "daily_reward_lin_regr" and epoch==config.start_decision_head_training:
+                # compute the new mus from the classification probabilities
+                mus = extract_mu_thresh(stats["class_probabilities"], stats["targets"][:, 0], config.p_thresh)
+                criterion.update_mus(torch.tensor(mus))
+                dict_results_epoch.update({"mus": mus})
+                print(f"started training with earliness at epoch {epoch}. New parameter mus: \n{mus}")
+            
+            # train and test epoch
             dict_args = {"epoch": epoch}
             trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, extra_padding_list=extra_padding_list, **dict_args)
             testloss, stats = test_epoch(model, testdataloader, criterion, config.device, extra_padding_list=extra_padding_list, return_id=test_ds.return_id, daily_timestamps=config.daily_timestamps, **dict_args)
@@ -220,13 +229,7 @@ def main():
                     dict_results_epoch["class_probabilities_wrt_time"] = wandb.Image(fig_prob_class)
                     plt.close(fig_prob_class)
                     
-            # udpate mus 
-            if config.loss == "daily_reward_lin_regr" and epoch==config.start_decision_head_training-1:
-                # compute the new mus from the classification probabilities
-                mus = extract_mu_thresh(stats["class_probabilities"], stats["targets"][:, 0], config.p_thresh)
-                criterion.update_mus(torch.tensor(mus, device=config.device))
-                dict_results_epoch.update({"mus": mus})
-                print(f"started training with earliness at epoch {epoch}. New parameter mus: \n{mus}")
+            
             
             wandb.log(dict_results_epoch)
 

@@ -29,8 +29,8 @@ class DailyRewardLinRegrLoss(nn.Module):
         
         self.start_decision_head_training = start_decision_head_training
         # mus is a tensor of length nclasses, containing the mu for each class
-        self.mus = kwargs.get("mus", torch.ones(len(weight), device=weight.device)*MU_DEFAULT)
-        self.percentage_earliness_reward = kwargs.get("percentage_earliness_reward", 0.5)
+        self.mus = kwargs.get("mus", torch.ones(len(weight))*MU_DEFAULT).to(weight.device)
+        self.percentage_earliness_reward = torch.tensor(kwargs.get("percentage_earliness_reward", 0.5), device=weight.device)
 
     def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False, **kwargs):
         N, T, C = log_class_probabilities.shape
@@ -81,7 +81,7 @@ class DailyRewardLinRegrLoss(nn.Module):
             return loss
         
     def update_mus(self, mus):
-        self.mus = mus
+        self.mus = mus.clone().detach().to(device=self.mus.device)
         
 
 def lin_regr_zt(t, T, mus, z_t, y_true):

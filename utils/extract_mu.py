@@ -10,5 +10,4 @@ def extract_mu_thresh(class_prob, y_true, p_tresh):
         if mu==0 and mean_prob_i[0]<p_tresh: 
             mu = 150
         mus.append(mu)
-        
     return mus
