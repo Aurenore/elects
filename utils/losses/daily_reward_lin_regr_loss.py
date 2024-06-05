@@ -62,7 +62,8 @@ class DailyRewardLinRegrLoss(nn.Module):
         classification_loss = cross_entropy.sum(1).mean(0)
 
         # final loss
-        self.alphas = torch.tensor([self.alpha, 1.-self.alpha*self.percentage_earliness_reward, 1.-self.alpha*(1.-self.percentage_earliness_reward)], device=log_class_probabilities.device)
+        alpha_1 = (1.-self.alpha)*self.percentage_earliness_reward
+        self.alphas = torch.tensor([self.alpha, alpha_1, 1.-self.alpha-alpha_1], device=log_class_probabilities.device)
         loss = self.alphas[0]*classification_loss - self.alphas[1]*earliness_reward + self.alphas[2]*lin_regr_zt_loss
 
         if return_stats:
