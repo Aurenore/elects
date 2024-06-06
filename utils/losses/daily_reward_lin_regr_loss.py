@@ -3,6 +3,7 @@ from torch import nn
 from utils.losses.loss_helpers import probability_correct_class, log_class_prob_at_t_plus_zt
 
 MU_DEFAULT = 150.
+NB_DAYS_IN_YEAR = 365.
 
 class DailyRewardLinRegrLoss(nn.Module):
     def __init__(self, alpha:float=1., weight=None, alpha_decay: list=None, epochs: int=100, start_decision_head_training: int=0, **kwargs):
@@ -29,7 +30,8 @@ class DailyRewardLinRegrLoss(nn.Module):
         
         self.start_decision_head_training = start_decision_head_training
         # mus is a tensor of length nclasses, containing the mu for each class
-        self.mus = kwargs.get("mus", torch.ones(len(weight))*MU_DEFAULT).to(weight.device)
+        self.mu = kwargs.get("sequencelength", NB_DAYS_IN_YEAR)*MU_DEFAULT/NB_DAYS_IN_YEAR
+        self.mus = kwargs.get("mus", torch.ones(len(weight))*self.mu).to(weight.device)
         self.percentage_earliness_reward = torch.tensor(kwargs.get("percentage_earliness_reward", 0.5), device=weight.device)
 
     def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False, **kwargs):
@@ -95,4 +97,6 @@ def lin_regr_zt(t, T, mus, z_t, y_true):
     OUTPUT: 
     loss: tensor of shape (N, T), 
     """
-    return  ((mus[y_true] - t - z_t)/T)**2
+    # lin_term is either mus[y_true]-t-z_t for t<=mus[y_true], or z_t otherwise
+    lin_term = torch.where(t<=mus[y_true], mus[y_true]-t-z_t, z_t)
+    return (lin_term/T)**2
