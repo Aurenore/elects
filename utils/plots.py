@@ -130,7 +130,7 @@ def plot_timestamps_left_per_class(fig, ax, stats, nclasses, class_names, mus, y
         fig, ax = plot_timestamps_left(timestamps_left_label, ax, fig, label_str)
         color_label = plt.gca().lines[-1].get_color()
         ax.axvline(mus[label], linestyle="--", color=color_label)
-        ax.text(mus[label], ylim-10*label, label_str, va='top', ha='right', color=color_label)
+        ax.text(mus[label], ylim-2-10*label, label_str, va='top', ha='right', color=color_label)
 
     ax.set_ylim(0, ylim)
     fig.tight_layout()
