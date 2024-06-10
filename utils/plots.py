@@ -138,7 +138,7 @@ def plot_timestamps_left_per_class(fig, ax, stats, nclasses, class_names, mus, y
         ax.axvline(mus[label], linestyle="--", color=color_label)
         ax.text(mus[label], ylim-2-10*label, label_str, va='top', ha='right', color=color_label)
     if epoch is not None:
-        ax.text(0.99, 0.99, f"Epoch {epoch}", transform=ax.transAxes, ha='right', va='top')
+        fig.text(0.99, 0.99, f"Epoch {epoch}", transform=fig.transFigure, ha='right', va='top')
 
     ax.set_ylim(0, ylim)
     fig.tight_layout()
