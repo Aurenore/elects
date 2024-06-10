@@ -1,19 +1,16 @@
 import imageio.v2 as imageio
 import os 
 
-def download_images(path, name_image, chosen_run, local_path):
+def download_images(name_image, chosen_run, local_path):
     """
-    download_images: Downloads the images from the specified path and saves them in the local_path
+    Downloads the images from the specified path and saves them in the local_path
     INPUT: 
-    - path: path to the images in the wandb storage
     - name_image: start of the name of the images to download
     - chosen_run: the run from which to download the images
     - local_path: the local path where to save the images
     """
-    # create the directory
     os.makedirs(local_path, exist_ok=True)
-    # List and download the files from the specified path
-    images_directory_start_name = path + name_image
+    images_directory_start_name = "media/images/"+name_image # format on wandb
     count = 0
     print(f"Downloading files which start with {images_directory_start_name}...")
     for file in chosen_run.files():
@@ -21,11 +18,20 @@ def download_images(path, name_image, chosen_run, local_path):
             file.download(root=local_path, exist_ok=True)
             count+=1
             print(f"Downloaded {file.name}")
-    print(f"Total downloaded: {count} files.")
+    print(f"Total downloaded: {count} files, saved in {local_path}")
     
     
-def add_files_to_images(folder_path, name_image):
-    """Add files from a folder to a list for GIF creation."""
+def add_files_to_images(local_path, name_image):
+    """
+    Add files from the local_path to a list for GIF/video creation.
+    INPUT: 
+    - local_path: the local path where the images are saved, e.g. '../results/run'
+    - name_image: start of the name of the images to download, e.g. 'class_probabilities_wrt_time_' the number of the epoch should be after the last '_'
+    OUTPUT:
+    - images: list of images
+    - folder_path: the path to the folder where the images are saved
+    """
+    folder_path = os.path.join(local_path, "media", "images") # format from wandb
     images = []
     images_paths = []
     for file in sorted(os.listdir(folder_path)):
@@ -33,7 +39,7 @@ def add_files_to_images(folder_path, name_image):
             file_path = os.path.join(folder_path, file)
             images_paths.append(file_path)
             
-    # sort the images paths by then number after "class_probabilities_wrt_time_"
+    # sort the images paths by the number after "class_probabilities_wrt_time_"
     images_paths = sorted(images_paths, key=lambda x: int(x.split(name_image)[1].split("_")[1]))
     print("imags_paths: ", images_paths)
     
@@ -44,20 +50,23 @@ def add_files_to_images(folder_path, name_image):
         else:
             print(f"Error loading {file_path}: Image is not in expected format.")
             
-    return images
-
-
-def save_gif(images_directory, images, filename='class_probability_wrt_time.gif', duration=1.):
-    """Save a list of images as a GIF at the specified location."""
-    gif_path = os.path.join(images_directory, filename)
-    imageio.mimsave(gif_path, images, duration=duration)  # duration controls the timing between frames in seconds
-    print(f"GIF saved at {gif_path}")
-    return gif_path
+    return images, folder_path
 
 
 def save_video(images_directory, images, output_filename='class_probability_wrt_time.mp4'):
+    """
+    Save a list of images as a video at the specified location.
+    INPUT:
+    - images_directory: the directory where the images are saved
+    - images: list of images
+    - output_filename: the name of the video file, should end with .mp4
+    OUTPUT: 
+    - video_path: the path to the saved video
+    """
+    if not output_filename.endswith('.mp4'):
+        raise ValueError("output_filename should end with .mp4")
     writer = imageio.get_writer(os.path.join(images_directory, output_filename), fps=2, codec='libx264') 
-    count = 0  # To count images processed
+    count = 0 
     for image in images:
         if image is not None:
             writer.append_data(image)
