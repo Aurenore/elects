@@ -46,7 +46,7 @@ def plot_label_distribution_datasets(datasets: list, sets_labels: list, fig, ax,
     return fig, ax
 
 
-def boxplot_stopping_times(doy_stop, stats, fig, ax, labels_names=LABELS_NAMES, colors=PALETTE):
+def boxplot_stopping_times(doy_stop, stats, fig, ax, labels_names=LABELS_NAMES, colors=PALETTE, epoch=None):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=FutureWarning)
         doys_months = [datetime.datetime(2017,m,1).timetuple().tm_yday for m in range(1,13)]
@@ -62,6 +62,9 @@ def boxplot_stopping_times(doy_stop, stats, fig, ax, labels_names=LABELS_NAMES, 
         ax.set_xticklabels(months, ha="left")
 
         sns.despine(left=True)
+        # if epoch is not None, write the epoch number on the plot at the top right corner
+        if epoch is not None:
+            ax.text(0.99, 0.99, f"Epoch {epoch}", transform=ax.transAxes, ha='right', va='top', fontsize=16)
         fig.tight_layout()
 
     return fig, ax
@@ -97,7 +100,7 @@ def plot_spectral_bands(idx, test_ds, doys_dict_test, class_names, fig, ax, pale
     return fig, ax
 
 
-def plot_timestamps_left(stats, ax_timestamps, fig_timestamps, label_str=""):
+def plot_timestamps_left(stats, ax_timestamps, fig_timestamps, label_str="", epoch=None):
     # check if stats is a dictionary
     if isinstance(stats, dict):
         timestamps_left_mean = stats["timestamps_left"].mean(axis=0)
@@ -116,11 +119,14 @@ def plot_timestamps_left(stats, ax_timestamps, fig_timestamps, label_str=""):
     ax_timestamps.set_ylim(0, max(150, timestamps_left_mean.max()+timestamps_left_std.max())) 
     ax_timestamps.legend()
     ax_timestamps.grid()    
+    # if epoch is not none, write the epoch number on the plot at the top right corner
+    if epoch is not None:
+        ax_timestamps.text(0.99, 0.99, f"Epoch {epoch}", transform=ax_timestamps.transAxes, ha='right', va='top')
     
     return fig_timestamps, ax_timestamps
 
 
-def plot_timestamps_left_per_class(fig, ax, stats, nclasses, class_names, mus, ylim=365):
+def plot_timestamps_left_per_class(fig, ax, stats, nclasses, class_names, mus, ylim=365, epoch=None):
     y_true = stats["targets"][:, 0]
     timestamps_left = stats["timestamps_left"]
     for label in range(nclasses):
@@ -131,6 +137,8 @@ def plot_timestamps_left_per_class(fig, ax, stats, nclasses, class_names, mus, y
         color_label = plt.gca().lines[-1].get_color()
         ax.axvline(mus[label], linestyle="--", color=color_label)
         ax.text(mus[label], ylim-2-10*label, label_str, va='top', ha='right', color=color_label)
+    if epoch is not None:
+        ax.text(0.99, 0.99, f"Epoch {epoch}", transform=ax.transAxes, ha='right', va='top')
 
     ax.set_ylim(0, ylim)
     fig.tight_layout()

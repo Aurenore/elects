@@ -144,7 +144,7 @@ def main():
     with tqdm(range(start_epoch, config.epochs + 1)) as pbar:
         for epoch in pbar:
             # udpate mus 
-            if config.loss == "daily_reward_lin_regr" and epoch==config.start_decision_head_training:
+            if config.loss == "daily_reward_lin_regr" and epoch>=config.start_decision_head_training and epoch%5==0:
                 # compute the new mus from the classification probabilities
                 mus = extract_mu_thresh(stats["class_probabilities"], stats["targets"][:, 0], config.p_thresh)
                 criterion.update_mus(torch.tensor(mus))
@@ -205,33 +205,34 @@ def main():
                             class_names=class_names, title="Confusion Matrix"),
                             "loss": {"trainloss": trainloss, "testloss": testloss},
                             "alpha": criterion.alpha,},)
-            if epoch % 10 == 1:
+            if epoch%5==0 or epoch==1 or epoch==config.epochs:
                 fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
                 if config.daily_timestamps:
                     doys_stop = stats["t_stop"].squeeze()
                 else: 
                     doys_dict = get_approximated_doys_dict(stats["seqlengths"], length_sorted_doy_dict_test)
                     doys_stop = get_doy_stop(stats, doys_dict)
-                fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names)
+                fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names, epoch=epoch)
                 dict_results_epoch["boxplot"] = wandb.Image(fig_boxplot)
                 plt.close(fig_boxplot)
                 
                 # plot the timestamps left if config loss contains "daily_reward"
                 if config.loss=="daily_reward":
                     fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
-                    fig_timestamps, _ = plot_timestamps_left(stats, ax_timestamps, fig_timestamps)
+                    fig_timestamps, _ = plot_timestamps_left(stats, ax_timestamps, fig_timestamps, epoch=epoch)
                     dict_results_epoch["timestamps_left_plot"] = wandb.Image(fig_timestamps)
                     plt.close(fig_timestamps)
                 
                 if config.loss == "daily_reward_lin_regr":
                     fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
-                    fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus)
+                    fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus, epoch=epoch)
                     dict_results_epoch["timestamps_left_plot"] = wandb.Image(fig_timestamps)
                     plt.close(fig_timestamps)
             
                     fig_prob_class, axes_prob_class = plt.subplots(figsize=(15, 7*len(class_names)), nrows=len(class_names), sharex=True)
                     fig_prob_class, _ = plot_fig_class_prob_wrt_time_with_mus(fig_prob_class, axes_prob_class, \
-                        stats["class_probabilities"], stats["targets"][:, 0], class_names, mus, config.p_thresh, alpha=0.1)    
+                            stats["class_probabilities"], stats["targets"][:, 0], class_names, mus, config.p_thresh, \
+                            alpha=0.1, epoch=epoch)    
                     dict_results_epoch["class_probabilities_wrt_time"] = wandb.Image(fig_prob_class)
                     plt.close(fig_prob_class)
                     

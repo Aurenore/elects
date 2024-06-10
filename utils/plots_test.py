@@ -232,7 +232,7 @@ def plot_fig_class_prob_wrt_time_one_sample(fig, axes, class_prob, y_true, class
     return fig, axes
 
 
-def plot_fig_class_prob_wrt_time_with_mus(fig, axes, class_prob, y_true, class_names, mus, p_thresh, alpha=0.2):
+def plot_fig_class_prob_wrt_time_with_mus(fig, axes, class_prob, y_true, class_names, mus, p_thresh, alpha=0.2, epoch=None):
     fig, axes = plot_fig_class_prob_wrt_time(fig, axes, class_prob, y_true, class_names, alpha)
     # for each ax i, plot a vertical line at mu_i and a horizontal line at p_tresh
     for label in range(len(class_names)):
@@ -242,7 +242,10 @@ def plot_fig_class_prob_wrt_time_with_mus(fig, axes, class_prob, y_true, class_n
         axes[label].text(mus[label], axes[label].get_ylim()[1], f'$\mu = {mus[label]}$', va='top', ha='right', color='red')
         # Place text for p_thresh at the far right of the axes (change 'right' to 'left' if you prefer it on the left side)
         axes[label].text(axes[label].get_xlim()[1], p_thresh, f'$p_{{thresh}} = {p_thresh}$', va='bottom', ha='right', color='black')
-
+        
+    # Add text for the epoch number at the top right corner of the figure
+    if epoch is not None:
+        fig.text(0.99, 0.99, f"Epoch {epoch}", transform=fig.transFigure, ha='right', va='top')
     fig.suptitle("Class probabilities through time", fontsize=16, y=1.)
     fig.tight_layout()
     return fig, axes
