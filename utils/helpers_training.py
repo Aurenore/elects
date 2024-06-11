@@ -5,6 +5,7 @@ os.environ['MPLCONFIGDIR'] = '/myhome'
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import torch
 import numpy as np
+import pandas as pd
 import wandb
 import copy
 from data import BreizhCrops
@@ -28,42 +29,54 @@ from utils.extract_mu import extract_mu_thresh
 
 def parse_args():
     def int_list(value):
-        # This function will split the string by spaces and convert each to an integer
-        return [int(i) for i in value.split()]
+        # This function will split the string by commas and convert each to an integer
+        return [int(i.strip()) for i in value.split(',')]
+    def float_list(value):
+        # This function will split the string by commas and convert each to a float
+        return [float(i.strip()) for i in value.split(',')]
+
+    parser = argparse.ArgumentParser(description='Training configuration for ELECTS.')
     
-    parser = argparse.ArgumentParser(description='Run ELECTS Early Classification training on the BavarianCrops dataset.')
-    parser.add_argument('--backbonemodel', type=str, default="LSTM", choices=["LSTM", "TempCNN"], help="backbone model")
-    parser.add_argument('--dataset', type=str, default="breizhcrops", choices=["bavariancrops","breizhcrops", "ghana", "southsudan","unitedstates"], help="dataset")
-    parser.add_argument('--alpha', type=float, default=0.5, help="trade-off parameter of earliness and accuracy (eq 6): "
-                                                                "1=full weight on accuracy; 0=full weight on earliness")
-    parser.add_argument('--epsilon', type=float, default=10, help="additive smoothing parameter that helps the "
-                                                                "model recover from too early classificaitons (eq 7)")
-    parser.add_argument('--learning-rate', type=float, default=1e-3, help="Optimizer learning rate")
-    parser.add_argument('--weight-decay', type=float, default=0, help="weight_decay")
+    # Arguments from YAML with default values specified
+    parser.add_argument('--backbonemodel', type=str, default=["LSTM", "TempCNN"], help="backbone model")
+    parser.add_argument('--dataset', type=str, default="breizhcrops", help="dataset")
+    parser.add_argument('--epsilon', type=float, default=10, help="additive smoothing parameter")
+    parser.add_argument('--learning-rate', type=float, default=0.001, help="Optimizer learning rate")
+    parser.add_argument('--weight-decay', type=float, default=0, help="weight decay")
     parser.add_argument('--patience', type=int, default=30, help="Early stopping patience")
-    parser.add_argument('--device', type=str, default="cuda" if torch.cuda.is_available() else "cpu",
-                        choices=["cuda", "cpu"], help="'cuda' (GPU) or 'cpu' device to run the code. "
-                                                    "defaults to 'cuda' if GPU is available, otherwise 'cpu'")
+    parser.add_argument('--device', type=str, default="cuda", help="Compute device")
     parser.add_argument('--epochs', type=int, default=100, help="number of training epochs")
-    parser.add_argument('--sequencelength', type=int, default=70, help="sequencelength of the time series. If samples are shorter, "
-                                                                "they are zero-padded until this length; "
-                                                                "if samples are longer, they will be undersampled")
-    parser.add_argument('--extra-padding-list', type=int_list, default=[[0]], nargs='+', help="extra padding for the TempCNN model")
+    parser.add_argument('--extra-padding-list', type=int_list, default="0", help="extra padding for the TempCNN model")
     parser.add_argument('--hidden-dims', type=int, default=64, help="number of hidden dimensions in the backbone model")
-    parser.add_argument('--batchsize', type=int, default=256, help="number of samples per batch")
-    parser.add_argument('--dataroot', type=str, default=os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data"), help="directory to download the "
-                                                                                "BavarianCrops dataset (400MB)."
-                                                                                "Defaults to home directory.")
-    parser.add_argument('--snapshot', type=str, default="snapshots/model.pth",
-                        help="pytorch state dict snapshot file")
-    parser.add_argument('--left-padding', type=bool, default=False, help="left padding for the TempCNN model")
-    parser.add_argument('--resume', action='store_true')
+    parser.add_argument('--batchsize', type=int, default=256, help="batch size")
+    parser.add_argument('--dataroot', type=str, default="/home/amauron/elects/data/elects_data", help="root directory for dataset")
+    parser.add_argument('--snapshot', type=str, default="/home/amauron/elects/data/elects_snapshots/model.pth", help="snapshot file path")
+    parser.add_argument('--left-padding', type=bool, default=False, help="left padding for TempCNN")
+    parser.add_argument('--sequencelength', type=int, default=365, help="sequence length for time series")
+    parser.add_argument('--loss', type=str, default="early_reward", help="daily_reward_lin_regr")
+    parser.add_argument('--decision-head', type=str, default="day", help="decision head type")	
+    parser.add_argument('--loss-weight', type=str, default="balanced", help="loss weight type")
+    parser.add_argument('--alpha', type=float, default=1.0, help="alpha value for adjustments")
+    parser.add_argument('--resume', action='store_true', default=False, help="Resume training from last checkpoint")
+    parser.add_argument('--validation-set', type=str, default="valid", help="validation set identifier")
+    parser.add_argument('--corrected', type=bool, default=True, help="whether the dataset is corrected")
+    parser.add_argument('--daily-timestamps', type=bool, default=True, help="include daily timestamps")
+    parser.add_argument('--original-time-serie-lengths', type=int_list, default="102", help="original lengths of time series")
+    parser.add_argument('--day-head-init-bias', type=int, default=None, help="initial bias for day head")
+    parser.add_argument('--alpha-decay', type=float_list, default="1., 0.6", help="alpha decay")
+    parser.add_argument('--start-decision-head-training', type=int, default=2, help="start point for decision head training")
+    parser.add_argument('--percentage-earliness-reward', type=float, default=0.3, help="percentage for earliness reward")
+    parser.add_argument('--mu', type=float, default=150.0, help="mu parameter")
+    parser.add_argument('--p-thresh', type=float, default=0.5, help="probability threshold")
+
     args = parser.parse_args()
-    
+
     if args.patience < 0:
         args.patience = None
+
+    # Flattening the list of lists in extra-padding-list if needed
     args.extra_padding_list = [item for sublist in args.extra_padding_list for item in sublist]
-    
+
     return args
 
 def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_list:list=[0], **kwargs):
@@ -244,7 +257,7 @@ def update_mus_during_training(config, criterion, stats, dict_results_epoch, epo
     mus = extract_mu_thresh(stats["class_probabilities"], stats["targets"][:, 0], config.p_thresh)
     criterion.update_mus(torch.tensor(mus))
     dict_results_epoch.update({"mus": mus})
-    print(f"started training with earliness at epoch {epoch}. New parameter mus: \n{mus}")
+    print(f"At epoch {epoch}, updated parameter mus: \n{mus}")
     return mus
 
 def get_metrics(stats, config):
