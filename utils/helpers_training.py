@@ -16,7 +16,7 @@ import torch
 from utils.losses.early_reward_loss import EarlyRewardLoss
 from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss
 from utils.losses.daily_reward_loss import DailyRewardLoss
-from utils.losses.daily_reward_lin_regr_loss import DailyRewardLinRegrLoss, MU_DEFAULT
+from utils.losses.daily_reward_lin_regr_loss import DailyRewardLinRegrLoss, MU_DEFAULT, NB_DAYS_IN_YEAR
 import sklearn.metrics
 from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times, plot_timestamps_left, \
     plot_timestamps_left_per_class
@@ -31,14 +31,25 @@ def parse_args():
     def int_list(value):
         # This function will split the string by commas and convert each to an integer
         return [int(i.strip()) for i in value.split(',')]
+    
     def float_list(value):
         # This function will split the string by commas and convert each to a float
         return [float(i.strip()) for i in value.split(',')]
-
+    
+    def str2bool(v):
+        if isinstance(v, bool):
+            return v
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
+        
     parser = argparse.ArgumentParser(description='Training configuration for ELECTS.')
     
     # Arguments from YAML with default values specified
-    parser.add_argument('--backbonemodel', type=str, default=["LSTM", "TempCNN"], help="backbone model")
+    parser.add_argument('--backbonemodel', type=str, default="LSTM", help="backbone model")
     parser.add_argument('--dataset', type=str, default="breizhcrops", help="dataset")
     parser.add_argument('--epsilon', type=float, default=10, help="additive smoothing parameter")
     parser.add_argument('--learning-rate', type=float, default=0.001, help="Optimizer learning rate")
@@ -52,30 +63,26 @@ def parse_args():
     parser.add_argument('--dataroot', type=str, default="/home/amauron/elects/data/elects_data", help="root directory for dataset")
     parser.add_argument('--snapshot', type=str, default="/home/amauron/elects/data/elects_snapshots/model.pth", help="snapshot file path")
     parser.add_argument('--left-padding', type=bool, default=False, help="left padding for TempCNN")
-    parser.add_argument('--sequencelength', type=int, default=365, help="sequence length for time series")
+    parser.add_argument('--sequencelength', type=int, default=70, help="sequence length for time series")
     parser.add_argument('--loss', type=str, default="early_reward", help="daily_reward_lin_regr")
     parser.add_argument('--decision-head', type=str, default="day", help="decision head type")	
     parser.add_argument('--loss-weight', type=str, default="balanced", help="loss weight type")
     parser.add_argument('--alpha', type=float, default=1.0, help="alpha value for adjustments")
     parser.add_argument('--resume', action='store_true', default=False, help="Resume training from last checkpoint")
     parser.add_argument('--validation-set', type=str, default="valid", help="validation set identifier")
-    parser.add_argument('--corrected', type=bool, default=True, help="whether the dataset is corrected")
-    parser.add_argument('--daily-timestamps', type=bool, default=True, help="include daily timestamps")
+    parser.add_argument('--corrected', type=str2bool, default=False, help="whether the dataset is corrected")
+    parser.add_argument('--daily-timestamps', type=str2bool, default=False, help="include daily timestamps")
     parser.add_argument('--original-time-serie-lengths', type=int_list, default="102", help="original lengths of time series")
-    parser.add_argument('--day-head-init-bias', type=int, default=None, help="initial bias for day head")
-    parser.add_argument('--alpha-decay', type=float_list, default="1., 0.6", help="alpha decay")
+    parser.add_argument('--day-head-init-bias', type=int, default=5, help="initial bias for day head")
+    parser.add_argument('--alpha-decay', type=float_list, default=[1.0, 0.6], help="alpha decay rates")
     parser.add_argument('--start-decision-head-training', type=int, default=2, help="start point for decision head training")
     parser.add_argument('--percentage-earliness-reward', type=float, default=0.3, help="percentage for earliness reward")
-    parser.add_argument('--mu', type=float, default=150.0, help="mu parameter")
     parser.add_argument('--p-thresh', type=float, default=0.5, help="probability threshold")
 
     args = parser.parse_args()
 
     if args.patience < 0:
         args.patience = None
-
-    # Flattening the list of lists in extra-padding-list if needed
-    args.extra_padding_list = [item for sublist in args.extra_padding_list for item in sublist]
 
     return args
 
@@ -195,6 +202,7 @@ def set_up_class_weights(config, train_ds):
     
 def set_up_criterion(config, class_weights, nclasses):
     mus = None
+    mu = None
     if config.loss == "early_reward":
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
     elif config.loss == "stopping_time_proximity":
@@ -205,7 +213,8 @@ def set_up_criterion(config, class_weights, nclasses):
         criterion = DailyRewardLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs,\
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0)
     elif config.loss == "daily_reward_lin_regr":
-        mu = config.mu if hasattr(config, "mu") else MU_DEFAULT
+        mu = int(config.sequencelength*MU_DEFAULT/NB_DAYS_IN_YEAR)
+        print(f"loss {config.loss} selected, setting mus to {mu}")
         mus = torch.ones(nclasses)*mu
         dict_criterion = {"mus": mus, \
                 "percentage_earliness_reward": config.percentage_earliness_reward if hasattr(config, "percentage_earliness_reward") else 0.9,}
@@ -215,7 +224,7 @@ def set_up_criterion(config, class_weights, nclasses):
     else: 
         print(f"loss {config.loss} not recognized, loss set to default: early_reward")
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
-    return criterion, mus
+    return criterion, mus, mu
 
 def set_up_resume(config, model, optimizer):
     if config.resume and os.path.exists(config.snapshot):
@@ -252,9 +261,9 @@ def mus_should_be_updated(config, epoch):
     else:
         return False
 
-def update_mus_during_training(config, criterion, stats, dict_results_epoch, epoch, mus):
+def update_mus_during_training(config, criterion, stats, dict_results_epoch, epoch, mus, mu_default):
     # compute the new mus from the classification probabilities
-    mus = extract_mu_thresh(stats["class_probabilities"], stats["targets"][:, 0], config.p_thresh)
+    mus = extract_mu_thresh(stats["class_probabilities"], stats["targets"][:, 0], config.p_thresh, mu_default)
     criterion.update_mus(torch.tensor(mus))
     dict_results_epoch.update({"mus": mus})
     print(f"At epoch {epoch}, updated parameter mus: \n{mus}")
@@ -324,7 +333,7 @@ def get_all_metrics(stats, config, epoch, train_stats, trainloss, testloss, crit
     dict_results_epoch = second_update_dict_result_epoch(dict_results_epoch, stats, trainloss, testloss, criterion, class_names)
     return dict_results_epoch, train_stats
 
-def plots_during_training(epoch, stats, config, dict_results_epoch, class_names, length_sorted_doy_dict_test, mus, nclasses):
+def plots_during_training(epoch, stats, config, dict_results_epoch, class_names, length_sorted_doy_dict_test, mus, nclasses, sequencelength):
     if epoch%5==0 or epoch==1 or epoch==config.epochs:
         fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
         if config.daily_timestamps:
@@ -345,7 +354,7 @@ def plots_during_training(epoch, stats, config, dict_results_epoch, class_names,
         
         if config.loss == "daily_reward_lin_regr":
             fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
-            fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus, epoch=epoch)
+            fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus, ylim=sequencelength, epoch=epoch)
             dict_results_epoch["timestamps_left_plot"] = wandb.Image(fig_timestamps)
             plt.close(fig_timestamps)
     

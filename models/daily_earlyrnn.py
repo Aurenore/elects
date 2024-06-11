@@ -24,7 +24,7 @@ class DailyEarlyRNN(nn.Module):
 
         # Heads
         self.classification_head = ClassificationHead(hidden_dims, nclasses)
-        self.stopping_decision_head = DecisionHeadDay(hidden_dims, day_head_init_bias)
+        self.stopping_decision_head = DecisionHeadDay(hidden_dims, day_head_init_bias, sequencelength)
         
         # if kwargs contains the "start_decision_head_training" key, then the training of the decision head will start at epoch "start_decision_head_training"
         if "start_decision_head_training" in kwargs:

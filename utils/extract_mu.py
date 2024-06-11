@@ -1,4 +1,4 @@
-def extract_mu_thresh(class_prob, y_true, p_tresh):
+def extract_mu_thresh(class_prob, y_true, p_tresh, mu_default):
     mus = []
     nb_classes = class_prob.shape[2]
     for label in range(nb_classes):
@@ -8,6 +8,6 @@ def extract_mu_thresh(class_prob, y_true, p_tresh):
         seq = mean_prob_i > p_tresh
         mu = seq.argmax()
         if mu==0 and mean_prob_i[0]<p_tresh: 
-            mu = 150
+            mu = mu_default
         mus.append(mu)
     return mus

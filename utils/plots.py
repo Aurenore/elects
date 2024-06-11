@@ -129,6 +129,7 @@ def plot_timestamps_left(stats, ax_timestamps, fig_timestamps, label_str="", epo
 def plot_timestamps_left_per_class(fig, ax, stats, nclasses, class_names, mus, ylim=365, epoch=None):
     y_true = stats["targets"][:, 0]
     timestamps_left = stats["timestamps_left"]
+    space_between_labels = ylim*10/365
     for label in range(nclasses):
         idx = y_true == label
         timestamps_left_label = timestamps_left[idx]
@@ -136,7 +137,7 @@ def plot_timestamps_left_per_class(fig, ax, stats, nclasses, class_names, mus, y
         fig, ax = plot_timestamps_left(timestamps_left_label, ax, fig, label_str)
         color_label = plt.gca().lines[-1].get_color()
         ax.axvline(mus[label], linestyle="--", color=color_label)
-        ax.text(mus[label], ylim-2-10*label, label_str, va='top', ha='right', color=color_label)
+        ax.text(mus[label], ylim-2-space_between_labels*label, label_str, va='top', ha='right', color=color_label)
     if epoch is not None:
         fig.text(0.99, 0.99, f"Epoch {epoch}", transform=fig.transFigure, ha='right', va='top')
 

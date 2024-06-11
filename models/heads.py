@@ -30,7 +30,7 @@ class DecisionHead(torch.nn.Module):
 
 class DecisionHeadDay(torch.nn.Module):
     
-    def __init__(self, hidden_dims, day_head_init_bias:float=None) -> None:
+    def __init__(self, hidden_dims, day_head_init_bias:float=None, sequencelength:float=364.) -> None:
         super(DecisionHeadDay, self).__init__()
         self.projection = nn.Sequential(
             nn.Linear(hidden_dims, 1, bias=True),
@@ -39,8 +39,10 @@ class DecisionHeadDay(torch.nn.Module):
         # initialize bias to predict late in first epochs
         if day_head_init_bias is not None:
             torch.nn.init.normal_(self.projection[0].bias, mean=day_head_init_bias, std=1e-1)
+        
+        self.sequencelength = sequencelength
 
     def forward(self, x):
         x = self.projection(x).squeeze(2)
-        x = x*364
+        x = x*self.sequencelength
         return x

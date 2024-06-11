@@ -8,16 +8,11 @@ import pandas as pd
 import wandb
 from utils.helpers_training import train_epoch, set_up_config, set_up_model, set_up_optimizer, set_up_class_weights, \
     set_up_criterion, set_up_resume, mus_should_be_updated, update_mus_during_training, get_all_metrics, \
-    update_patience, log_description, plots_during_training, load_dataset, plot_label_distribution_in_training
+    update_patience, log_description, plots_during_training, load_dataset, plot_label_distribution_in_training 
 from utils.helpers_testing import test_epoch
 
-def main():
+def main_train(config):
     # ----------------------------- CONFIGURATION -----------------------------
-    wandb.init(
-        notes="ELECTS with new cost function",
-        tags=["ELECTS", "earlyrnn", "trials", "sweep", "kp", "alphas", "with bias init", "with weight in earliness reward"],
-    )
-    config = wandb.config
     config, extra_padding_list = set_up_config(config)
     
     # ----------------------------- LOAD DATASET -----------------------------
@@ -30,7 +25,7 @@ def main():
     model = set_up_model(config, nclasses, input_dim)
     optimizer = set_up_optimizer(config, model)
     class_weights = set_up_class_weights(config, train_ds)
-    criterion, mus = set_up_criterion(config, class_weights, nclasses)
+    criterion, mus, mu = set_up_criterion(config, class_weights, nclasses)
     train_stats, start_epoch = set_up_resume(config, model, optimizer)
     not_improved = 0
     
@@ -39,7 +34,7 @@ def main():
     with tqdm(range(start_epoch, config.epochs + 1)) as pbar:
         for epoch in pbar:
             if mus_should_be_updated(config, epoch):
-                mus = update_mus_during_training(config, criterion, stats, dict_results_epoch, epoch, mus)
+                mus = update_mus_during_training(config, criterion, stats, dict_results_epoch, epoch, mus, mu)
             
             # train and test epoch
             dict_args = {"epoch": epoch}
@@ -50,7 +45,7 @@ def main():
             dict_results_epoch, train_stats = get_all_metrics(stats, config, epoch, train_stats, trainloss, testloss, criterion, class_names)
             
             # plot metrics
-            dict_results_epoch = plots_during_training(epoch, stats, config, dict_results_epoch, class_names, length_sorted_doy_dict_test, mus, nclasses)
+            dict_results_epoch = plots_during_training(epoch, stats, config, dict_results_epoch, class_names, length_sorted_doy_dict_test, mus, nclasses, config.sequencelength)
             wandb.log(dict_results_epoch)
             
             # save model if testloss improved
@@ -66,7 +61,3 @@ def main():
                     print(f"stopping training. testloss {testloss:.2f} did not improve in {config.patience} epochs.")
                     break 
     wandb.finish()
-
-
-if __name__ == '__main__':
-    main()
