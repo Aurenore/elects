@@ -152,7 +152,7 @@ def load_dataset(config):
     return traindataloader, testdataloader, train_ds, test_ds, nclasses, class_names, input_dim, length_sorted_doy_dict_test
 
 
-def set_up_model(config, nclasses, input_dim):
+def set_up_model(config, nclasses, input_dim, train: bool=True):
     """ sets up the model
 
     Args:
@@ -168,7 +168,8 @@ def set_up_model(config, nclasses, input_dim):
         model = DailyEarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, day_head_init_bias=config.day_head_init_bias, **dict_model).to(config.device)
     else:
         model = EarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, left_padding=config.left_padding).to(config.device)
-    wandb.config.update({"nb_parameters": count_parameters(model)})
+    if train:
+        wandb.config.update({"nb_parameters": count_parameters(model)})
     return model
 
 def set_up_optimizer(config, model):
@@ -242,18 +243,6 @@ def set_up_resume(config, model, optimizer):
         start_epoch = 1
     return train_stats, start_epoch
 
-def set_up_config(config):
-    # only use extra padding if tempcnn
-    if config.backbonemodel == "LSTM":
-        extra_padding_list = [0]
-        print(f"Since LSTM is used, extra padding is set to {extra_padding_list}")
-    else:
-        extra_padding_list = config.extra_padding_list
-
-    # check if config.validation_set is set
-    if not hasattr(config, "validation_set"):
-        config.validation_set = "valid"
-    return config, extra_padding_list
 
 def mus_should_be_updated(config, epoch):
     if config.loss == "daily_reward_lin_regr" and epoch>=config.start_decision_head_training and epoch%5==0:

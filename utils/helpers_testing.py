@@ -6,6 +6,7 @@ import torch
 import numpy as np
 from utils.metrics import harmonic_mean_score
 import sklearn.metrics
+from utils.helpers_config import set_up_config
 
 def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0], return_id:bool=False, daily_timestamps:bool=False, **kwargs):
     model.eval()
@@ -131,3 +132,10 @@ def get_prob_t_stop(prob_stopping):
         prob_t_stop[:, i] = np.prod(1-prob_stopping[:, :i], axis=1)*prob_stopping[:, i]
     return prob_t_stop
 
+
+def get_test_stats_from_model(model, test_ds, criterion, config):
+    args, _ = set_up_config(config)
+    testloss, stats = test_dataset(model, test_ds, criterion, args.device, args.batchsize, extra_padding_list=args.extra_padding_list, \
+        return_id=test_ds.return_id, daily_timestamps=args.daily_timestamps, kwargs={"epoch": args.epochs, "criterion_alpha": args.alpha_decay[1]})
+    test_stats = get_test_stats(stats, testloss, args)
+    return test_stats, stats
