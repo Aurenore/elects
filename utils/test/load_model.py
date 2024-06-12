@@ -79,7 +79,7 @@ def get_loaded_model_and_criterion(run, nclasses, input_dim):
         class_weights = torch.tensor(run_config.class_weights)
     else:
         class_weights = None
-    criterion, mus,mu = set_up_criterion(run_config, class_weights, nclasses)
+    criterion, mus, mu = set_up_criterion(run_config, class_weights, nclasses)
     model = set_up_model(run_config, nclasses, input_dim, train=False)
     print("model is loading from: ", model_path)
     model.load_state_dict(torch.load(os.path.join(model_path, "model.pth")))

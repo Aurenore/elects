@@ -134,7 +134,7 @@ def get_prob_t_stop(prob_stopping):
 
 
 def get_test_stats_from_model(model, test_ds, criterion, config):
-    args, _ = set_up_config(config)
+    args, _ = set_up_config(config, print_comments=True)
     testloss, stats = test_dataset(model, test_ds, criterion, args.device, args.batchsize, extra_padding_list=args.extra_padding_list, \
         return_id=test_ds.return_id, daily_timestamps=args.daily_timestamps, kwargs={"epoch": args.epochs, "criterion_alpha": args.alpha_decay[1]})
     test_stats = get_test_stats(stats, testloss, args)
