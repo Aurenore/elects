@@ -56,5 +56,10 @@ def set_up_config(config, print_comments:bool=False):
             print(f"Since LSTM is used, extra padding is set to {extra_padding_list}")
     else:
         extra_padding_list = config.extra_padding_list
+        
+    if hasattr(config, "class_weights"):
+        config.class_weights = config.class_weights.clone().detach().to(config.device)
+        if print_comments:
+            print(f"weights moved to device {config.device}")
     
     return config, extra_padding_list

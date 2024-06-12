@@ -35,15 +35,15 @@ def main_train(config):
     with tqdm(range(start_epoch, config.epochs + 1)) as pbar:
         for epoch in pbar:
             if mus_should_be_updated(config, epoch):
-                mus = update_mus_during_training(config, criterion, stats, dict_results_epoch, epoch, mus, mu)
+                mus = update_mus_during_training(config, criterion, stats, epoch, mus, mu)
             
             # train and test epoch
             dict_args = {"epoch": epoch}
             trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, extra_padding_list=extra_padding_list, **dict_args)
-            testloss, stats = test_epoch(model, testdataloader, criterion, config.device, extra_padding_list=extra_padding_list, return_id=test_ds.return_id, daily_timestamps=config.daily_timestamps, **dict_args)
+            testloss, stats = test_epoch(model, testdataloader, criterion, config, extra_padding_list=extra_padding_list, return_id=test_ds.return_id, **dict_args)
 
             # get metrics
-            dict_results_epoch, train_stats = get_all_metrics(stats, config, epoch, train_stats, trainloss, testloss, criterion, class_names)
+            dict_results_epoch, train_stats = get_all_metrics(stats, config, epoch, train_stats, trainloss, testloss, criterion, class_names, mus)
             
             # plot metrics
             dict_results_epoch = plots_during_training(epoch, stats, config, dict_results_epoch, class_names, length_sorted_doy_dict_test, mus, nclasses, config.sequencelength)

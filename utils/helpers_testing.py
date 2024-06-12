@@ -8,7 +8,7 @@ from utils.metrics import harmonic_mean_score
 import sklearn.metrics
 from utils.helpers_config import set_up_config
 
-def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0], return_id:bool=False, daily_timestamps:bool=False, **kwargs):
+def test_epoch(model, dataloader, criterion, config, extra_padding_list:list=[0], return_id:bool=False, **kwargs):
     model.eval()
 
     stats = []
@@ -24,12 +24,12 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
         else:
             X, y_true, ids = batch
             ids = ids.unsqueeze(-1)
-        X, y_true = X.to(device), y_true.to(device)
+        X, y_true = X.to(config.device), y_true.to(config.device)
 
-        if not daily_timestamps:
+        if not config.daily_timestamps:
             seqlengths = (X[:,:,0] != 0).sum(1)
         else:
-            seqlengths = 365*torch.ones(X.shape[0], device=device)
+            seqlengths = 365*torch.ones(X.shape[0], device=config.device)
         slengths.append(seqlengths.cpu().detach())
         
         # by default, we predict the sequence with the smallest padding
@@ -40,9 +40,9 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
         log_class_probabilities, stopping_criteria, predictions_at_t_stop, t_stop = model.predict(X, **dict_padding)
             
         if len(extra_padding_list) > 1:
-            assert not daily_timestamps, "Extra padding is not implemented for daily_timestamps"
+            assert not config.daily_timestamps, "Extra padding is not implemented for daily_timestamps"
             # mask for sequences that are not predicted yet
-            unpredicted_seq_mask = torch.ones(X.shape[0], dtype=bool).to(device)
+            unpredicted_seq_mask = torch.ones(X.shape[0], dtype=bool).to(config.device)
             # index for the extra_padding_list
             i=0 
             while unpredicted_seq_mask.any() and i < len(extra_padding_list)-1:
@@ -53,7 +53,7 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
                     seqlengths_temp = seqlengths - extra_padding
                 else:
                     # non-zero sequence lengths is the min between nonzero_seqlengths and sequencelength - padding 
-                    seqlengths_temp = torch.min(seqlengths, torch.tensor(model.sequence_length - extra_padding, device=device))
+                    seqlengths_temp = torch.min(seqlengths, torch.tensor(model.sequence_length - extra_padding, device=config.device))
                 # update the mask if t_stop is different from the length of the padded sequence (i.e. the sequence is predicted before its end)
                 unpredicted_seq_mask = unpredicted_seq_mask*(t_stop_temp > seqlengths_temp)
             
@@ -67,7 +67,7 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
         loss, stat = criterion(log_class_probabilities, stopping_criteria, y_true, return_stats=True, **kwargs)
         stat["loss"] = loss.cpu().detach().numpy()
         # depending of the model, we define the probability of stopping or the timestamps left as the stopping criteria
-        if not daily_timestamps:
+        if not config.daily_timestamps and config.loss == "early_reward":
             stat["probability_stopping"] = stopping_criteria.cpu().detach().numpy()
         else: 
             stat["timestamps_left"] = stopping_criteria.cpu().detach().numpy()
@@ -87,11 +87,12 @@ def test_epoch(model, dataloader, criterion, device, extra_padding_list:list=[0]
     return np.stack(losses).mean(), stats
 
 
-def test_dataset(model, test_ds, criterion, device, batch_size, extra_padding_list:list=[0], return_id:bool=False, daily_timestamps:bool=False, **kwargs):
+def test_dataset(model, test_ds, criterion, config, **kwargs):
     model.eval()
     with torch.no_grad():
-        dataloader = DataLoader(test_ds, batch_size=batch_size)
-        loss, stats = test_epoch(model, dataloader, criterion, device, extra_padding_list=extra_padding_list, return_id=return_id, daily_timestamps=daily_timestamps, **kwargs)
+        dataloader = DataLoader(test_ds, batch_size=config.batchsize)
+        loss, stats = test_epoch(model, dataloader, criterion, config, extra_padding_list=config.extra_padding_list, \
+            return_id=test_ds.return_id, **kwargs)
     return loss, stats
 
 
@@ -135,7 +136,7 @@ def get_prob_t_stop(prob_stopping):
 
 def get_test_stats_from_model(model, test_ds, criterion, config):
     args, _ = set_up_config(config, print_comments=True)
-    testloss, stats = test_dataset(model, test_ds, criterion, args.device, args.batchsize, extra_padding_list=args.extra_padding_list, \
-        return_id=test_ds.return_id, daily_timestamps=args.daily_timestamps, kwargs={"epoch": args.epochs, "criterion_alpha": args.alpha_decay[1]})
+    kwargs={"epoch": args.epochs, "criterion_alpha": args.alpha_decay[1]}
+    testloss, stats = test_dataset(model, test_ds, criterion, args, **kwargs)
     test_stats = get_test_stats(stats, testloss, args)
     return test_stats, stats

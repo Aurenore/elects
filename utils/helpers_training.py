@@ -250,11 +250,10 @@ def mus_should_be_updated(config, epoch):
     else:
         return False
 
-def update_mus_during_training(config, criterion, stats, dict_results_epoch, epoch, mus, mu_default):
+def update_mus_during_training(config, criterion, stats, epoch, mus, mu_default):
     # compute the new mus from the classification probabilities
     mus = extract_mu_thresh(stats["class_probabilities"], stats["targets"][:, 0], config.p_thresh, mu_default)
     criterion.update_mus(torch.tensor(mus))
-    dict_results_epoch.update({"mus": mus})
     print(f"At epoch {epoch}, updated parameter mus: \n{mus}")
     return mus
 
@@ -302,7 +301,7 @@ def update_dict_result_epoch(dict_results_epoch, stats, config, epoch, trainloss
             })
     return dict_results_epoch
 
-def second_update_dict_result_epoch(dict_results_epoch, stats, trainloss, testloss, criterion, class_names):
+def second_update_dict_result_epoch(dict_results_epoch, stats, trainloss, testloss, criterion, class_names, mus):
     # update for wandb format
     dict_results_epoch.pop("trainloss")
     dict_results_epoch.pop("testloss")
@@ -310,16 +309,16 @@ def second_update_dict_result_epoch(dict_results_epoch, stats, trainloss, testlo
                     y_true=stats["targets"][:,0], preds=stats["predictions_at_t_stop"][:,0],
                     class_names=class_names, title="Confusion Matrix"),
                     "loss": {"trainloss": trainloss, "testloss": testloss},
-                    "alpha": criterion.alpha,},)
+                    "alpha": criterion.alpha, "mus": mus,})
     return dict_results_epoch
 
-def get_all_metrics(stats, config, epoch, train_stats, trainloss, testloss, criterion, class_names):
+def get_all_metrics(stats, config, epoch, train_stats, trainloss, testloss, criterion, class_names, mus):
     dict_results_epoch = get_metrics(stats, config)
     # first update the dict_results_epoch with the correct format for train_stats
     dict_results_epoch = update_dict_result_epoch(dict_results_epoch, stats, config, epoch, trainloss, testloss, criterion)
     train_stats.append(copy.deepcopy(dict_results_epoch))
     # update the dict_results_epoch with the correct format for wandb
-    dict_results_epoch = second_update_dict_result_epoch(dict_results_epoch, stats, trainloss, testloss, criterion, class_names)
+    dict_results_epoch = second_update_dict_result_epoch(dict_results_epoch, stats, trainloss, testloss, criterion, class_names, mus)
     return dict_results_epoch, train_stats
 
 def plots_during_training(epoch, stats, config, dict_results_epoch, class_names, length_sorted_doy_dict_test, mus, nclasses, sequencelength):
