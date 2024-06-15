@@ -201,7 +201,7 @@ def set_up_class_weights(config, train_ds):
     config.update({"class_weights": class_weights.cpu().detach().numpy() if class_weights is not None else None})
     return class_weights
     
-def set_up_criterion(config, class_weights, nclasses):
+def set_up_criterion(config, class_weights, nclasses, mus=None):
     mus = None
     mu = None
     if config.loss == "early_reward":
@@ -215,8 +215,11 @@ def set_up_criterion(config, class_weights, nclasses):
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0)
     elif config.loss == "daily_reward_lin_regr":
         mu = int(config.sequencelength*MU_DEFAULT/NB_DAYS_IN_YEAR)
-        print(f"loss {config.loss} selected, setting mus to {mu}")
-        mus = torch.ones(nclasses)*mu
+        if mus is None:
+            print(f"loss {config.loss} selected, setting mus to {mu}")
+            mus = torch.ones(nclasses)*mu
+        else: 
+            print(f"loss {config.loss} selected, mus set to {mus}")
         dict_criterion = {"mus": mus, \
                 "percentage_earliness_reward": config.percentage_earliness_reward if hasattr(config, "percentage_earliness_reward") else 0.9,}
         criterion = DailyRewardLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \

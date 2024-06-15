@@ -58,6 +58,8 @@ def set_up_config(config, print_comments:bool=False):
         extra_padding_list = config.extra_padding_list
         
     if hasattr(config, "class_weights"):
+        if isinstance(config.class_weights, list):  # Check if it's a list
+            config.class_weights = torch.tensor(config.class_weights, dtype=torch.float)
         config.class_weights = config.class_weights.clone().detach().to(config.device)
         if print_comments:
             print(f"weights moved to device {config.device}")

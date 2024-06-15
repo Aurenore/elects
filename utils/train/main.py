@@ -61,4 +61,6 @@ def main_train(config):
                 if not_improved > config.patience:
                     print(f"stopping training. testloss {testloss:.2f} did not improve in {config.patience} epochs.")
                     break 
+    print("training finished.")
+    config.update({"mus": mus})
     wandb.finish()
