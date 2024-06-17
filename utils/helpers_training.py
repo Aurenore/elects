@@ -373,10 +373,14 @@ def update_dict_result_epoch(dict_results_epoch, stats, config, epoch, trainloss
             "proximity_reward": stats["proximity_reward"].mean(),
             "wrong_pred_penalty": stats["wrong_pred_penalty"].mean(),
             })
-    elif config.loss == "daily_reward_lin_regr":
+    if "lin_regr" in config.loss: 
         dict_results_epoch.update({
             "lin_regr_zt_loss": stats["lin_regr_zt_loss"].mean(),
             "alphas": criterion.alphas.cpu().detach().numpy(),
+            })        
+    if config.loss == "daily_reward_piecewise_lin_regr":
+        dict_results_epoch.update({
+            "wrong_pred_penalty": stats["wrong_pred_penalty"].mean(),
             })
     return dict_results_epoch
 
@@ -467,7 +471,7 @@ def plots_during_training(epoch, stats, config, dict_results_epoch, class_names,
             dict_results_epoch["timestamps_left_plot"] = wandb.Image(fig_timestamps)
             plt.close(fig_timestamps)
         
-        if config.loss == "daily_reward_lin_regr":
+        if "lin_regr" in config.loss:
             fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
             fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus, ylim=sequencelength, epoch=epoch)
             dict_results_epoch["timestamps_left_plot"] = wandb.Image(fig_timestamps)
