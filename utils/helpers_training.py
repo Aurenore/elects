@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 from models.earlyrnn import EarlyRNN
 from models.daily_earlyrnn import DailyEarlyRNN
 import torch
+from utils.losses.daily_reward_piecewise_lin_regr_loss import DailyRewardPiecewiseLinRegrLoss
 from utils.losses.early_reward_loss import EarlyRewardLoss
 from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss
 from utils.losses.daily_reward_loss import DailyRewardLoss
@@ -168,13 +169,14 @@ def load_dataset(config):
     return traindataloader, testdataloader, train_ds, test_ds, nclasses, class_names, input_dim, length_sorted_doy_dict_test
 
 
-def set_up_model(config, nclasses, input_dim, train: bool=True):
+def set_up_model(config, nclasses, input_dim, update_wandb: bool=True):
     """ sets up the model
 
     Args:
         config (wandb.config): configuration of the run
         nclasses (int): number of classes
         input_dim (int): dimension of the input
+        update_wandb (bool, optional): whether to update the wandb configuration. Defaults to True.
 
     Returns:
         model: the model
@@ -184,7 +186,7 @@ def set_up_model(config, nclasses, input_dim, train: bool=True):
         model = DailyEarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, day_head_init_bias=config.day_head_init_bias, **dict_model).to(config.device)
     else:
         model = EarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, left_padding=config.left_padding).to(config.device)
-    if train:
+    if update_wandb:
         wandb.config.update({"nb_parameters": count_parameters(model)})
     return model
 
@@ -239,7 +241,16 @@ def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None):
         mus: mus for the daily_reward_lin_regr_loss
         mu: mu for the daily_reward_lin_regr_loss
     """
+    # define mus if necessary
     mu = None
+    if "lin_regr" in config.loss: 
+        mu = int(config.sequencelength*MU_DEFAULT/NB_DAYS_IN_YEAR)
+        if mus is None:
+            print(f"loss {config.loss} selected, setting mus to {mu}")
+            mus = torch.ones(nclasses)*mu
+        else: 
+            print(f"loss {config.loss} selected, mus set to {mus}")
+            
     if config.loss == "early_reward":
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
     elif config.loss == "stopping_time_proximity":
@@ -250,15 +261,14 @@ def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None):
         criterion = DailyRewardLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs,\
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0)
     elif config.loss == "daily_reward_lin_regr":
-        mu = int(config.sequencelength*MU_DEFAULT/NB_DAYS_IN_YEAR)
-        if mus is None:
-            print(f"loss {config.loss} selected, setting mus to {mu}")
-            mus = torch.ones(nclasses)*mu
-        else: 
-            print(f"loss {config.loss} selected, mus set to {mus}")
         dict_criterion = {"mus": mus, \
                 "percentage_earliness_reward": config.percentage_earliness_reward if hasattr(config, "percentage_earliness_reward") else 0.9,}
         criterion = DailyRewardLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
+            start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
+            **dict_criterion)
+    elif config.loss == "daily_reward_piecewise_lin_regr":
+        dict_criterion = {"mus": mus}
+        criterion = DailyRewardPiecewiseLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
             **dict_criterion)
     else: 

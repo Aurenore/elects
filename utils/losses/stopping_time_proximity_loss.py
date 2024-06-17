@@ -1,6 +1,6 @@
 import torch 
 import torch.nn as nn
-from utils.losses.early_reward_loss import probability_correct_class
+from utils.losses.loss_helpers import probability_correct_class, probability_wrong_class
 from models.model_helpers import get_t_stop_from_daily_timestamps
 
 class StoppingTimeProximityLoss(nn.Module):
@@ -105,29 +105,6 @@ def get_proximity_reward(logprobabilities, targets, timestamps_left, max_number_
         result += result_class
         
     return result  
-
-
-def probability_wrong_class(logprobabilities, targets, weight=None):
-    """
-    targets: shape (batchsize, sequencelength)
-    logprobabilities: shape (batchsize, sequencelength, nclasses)
-    weight: shape (nclasses, )
-    OUTPUT: 
-    - shape (batchsize, sequencelength)
-    """
-    batchsize, sequencelength, nclasses = logprobabilities.shape
-
-    eye = torch.eye(nclasses).type(torch.ByteTensor).to(logprobabilities.device)
-
-    targets_one_hot = eye[targets]
-    targets_one_hot = ~targets_one_hot # since we want the wrong classes, shape: (batchsize, sequencelength, nclasses)
-
-    y_haty = torch.masked_select(logprobabilities, targets_one_hot.bool()) # shape: (batchsize*sequencelength*nclasses,)
-    result = y_haty.view(batchsize, sequencelength, nclasses).exp() # shape: (batchsize, sequencelength, nclasses)
-    if weight is not None: 
-        result = result * weight
-    # sum over classes
-    return result.sum(2) 
 
 
 def sample_three_uniform_numbers():

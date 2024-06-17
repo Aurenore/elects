@@ -62,11 +62,11 @@ def probability_wrong_class(logprobabilities, targets, weight=None):
 
     # Mask the probabilities to only consider wrong classes
     # Using zero multiplication for correct classes to keep the same shape
-    probabilities *= wrong_classes_mask
+    probabilities = probabilities*wrong_classes_mask
 
     # Apply weight if provided
     if weight is not None:
-        probabilities *= weight.unsqueeze(0).unsqueeze(0)
+        probabilities = probabilities*weight.unsqueeze(0).unsqueeze(0)
 
     # Sum the probabilities across the class dimension
     result = probabilities.sum(dim=2)
