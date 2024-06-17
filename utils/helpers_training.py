@@ -25,9 +25,11 @@ from utils.doy import get_doys_dict_test, get_doy_stop, create_sorted_doys_dict_
 from utils.metrics import harmonic_mean_score
 from models.model_helpers import count_parameters
 import matplotlib.pyplot as plt
-from utils.extract_mu import extract_mu_thresh
+
 
 def parse_args():
+    """ Parse the arguments from the command line
+    """
     def int_list(value):
         # This function will split the string by commas and convert each to an integer
         return [int(i.strip()) for i in value.split(',')]
@@ -87,6 +89,20 @@ def parse_args():
     return args
 
 def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_list:list=[0], **kwargs):
+    """ Train the model for one epoch
+    
+    Args:
+        model: the model
+        dataloader: the dataloader
+        optimizer: the optimizer
+        criterion: the loss function
+        device: the device
+        extra_padding_list: list of extra padding values, default is [0]. 
+        kwargs: additional keyword arguments, e.g. epoch
+        
+    Returns:
+        np.stack(losses).mean(): the mean of the losses over the epoch 
+    """
     losses = []
     model.train()
     for batch in dataloader:
@@ -194,6 +210,14 @@ def set_up_optimizer(config, model):
     return optimizer
 
 def set_up_class_weights(config, train_ds):
+    """ sets up the class weights given the configuration and the training dataset
+    
+    Args: 
+        config (wandb.config): configuration of the run, with the loss_weight attribute. 
+        train_ds: training dataset
+    
+    Returns:
+        class_weights: class weights"""
     if config.loss_weight == "balanced":
         class_weights = train_ds.get_class_weights().to(config.device)
     else: 
@@ -201,8 +225,20 @@ def set_up_class_weights(config, train_ds):
     config.update({"class_weights": class_weights.cpu().detach().numpy() if class_weights is not None else None})
     return class_weights
     
-def set_up_criterion(config, class_weights, nclasses, mus=None):
-    mus = None
+def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None):
+    """ sets up the criterion
+    
+    Args:
+        config (wandb.config): configuration of the run
+        class_weights: class weights
+        nclasses (int): number of classes
+        mus: mus for the daily_reward_lin_regr_loss
+    
+    Returns:
+        criterion: the criterion
+        mus: mus for the daily_reward_lin_regr_loss
+        mu: mu for the daily_reward_lin_regr_loss
+    """
     mu = None
     if config.loss == "early_reward":
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
@@ -231,6 +267,17 @@ def set_up_criterion(config, class_weights, nclasses, mus=None):
     return criterion, mus, mu
 
 def set_up_resume(config, model, optimizer):
+    """ sets up the resume option
+    
+    Args:
+        config (wandb.config): configuration of the run
+        model: the model
+        optimizer: the optimizer
+    
+    Returns:
+        train_stats: training statistics
+        start_epoch: starting epoch
+    """
     if config.resume and os.path.exists(config.snapshot):
         model.load_state_dict(torch.load(config.snapshot, map_location=config.device))
         optimizer_snapshot = os.path.join(os.path.dirname(config.snapshot),
@@ -247,20 +294,25 @@ def set_up_resume(config, model, optimizer):
     return train_stats, start_epoch
 
 
-def mus_should_be_updated(config, epoch):
-    if config.loss == "daily_reward_lin_regr" and epoch>=config.start_decision_head_training and epoch%5==0:
-        return True
-    else:
-        return False
-
-def update_mus_during_training(config, criterion, stats, epoch, mus, mu_default):
-    # compute the new mus from the classification probabilities
-    mus = extract_mu_thresh(stats["class_probabilities"], stats["targets"][:, 0], config.p_thresh, mu_default)
-    criterion.update_mus(torch.tensor(mus))
-    print(f"At epoch {epoch}, updated parameter mus: \n{mus}")
-    return mus
-
 def get_metrics(stats, config):
+    """ computes the metrics from the statistics
+    
+    Args:
+        stats: the statistics
+        config: the configuration
+    
+    Returns:
+        dict_results: the results in a dictionary. The computed metrics are: 
+            - accuracy
+            - precision
+            - recall
+            - fscore
+            - kappa
+            - elects_earliness (1-t/T)
+            - classification_loss
+            - earliness_reward
+            - harmonic_mean of the accuracy and earliness
+    """
     precision, recall, fscore, support = sklearn.metrics.precision_recall_fscore_support(
         y_pred=stats["predictions_at_t_stop"][:, 0], y_true=stats["targets"][:, 0], average="macro",
         zero_division=0)
@@ -287,6 +339,20 @@ def get_metrics(stats, config):
     return dict_results
 
 def update_dict_result_epoch(dict_results_epoch, stats, config, epoch, trainloss, testloss, criterion):
+    """ updates the dict_results_epoch with the correct format for the train_stats list
+    
+    Args:
+        dict_results_epoch: the dictionary to update
+        stats: the statistics
+        config: the configuration
+        epoch: the epoch
+        trainloss: the training loss
+        testloss: the test loss
+        criterion: the criterion
+    
+    Returns:
+        dict_results_epoch: the updated dictionary
+    """
     dict_results_epoch.update({
         "epoch": epoch,
         "trainloss": trainloss,
@@ -305,7 +371,20 @@ def update_dict_result_epoch(dict_results_epoch, stats, config, epoch, trainloss
     return dict_results_epoch
 
 def second_update_dict_result_epoch(dict_results_epoch, stats, trainloss, testloss, criterion, class_names, mus):
-    # update for wandb format
+    """ updates the dict_results_epoch with the correct format for wandb
+    
+    Args:
+        dict_results_epoch: the dictionary to update
+        stats: the statistics
+        trainloss: the training loss
+        testloss: the test loss
+        criterion: the criterion
+        class_names: the class names
+        mus: the mus for the daily_reward_lin_regr_loss
+    
+    Returns:
+        dict_results_epoch: the updated dictionary
+    """
     dict_results_epoch.pop("trainloss")
     dict_results_epoch.pop("testloss")
     dict_results_epoch.update({"conf_mat" : wandb.plot.confusion_matrix(probs=None,
@@ -316,6 +395,23 @@ def second_update_dict_result_epoch(dict_results_epoch, stats, trainloss, testlo
     return dict_results_epoch
 
 def get_all_metrics(stats, config, epoch, train_stats, trainloss, testloss, criterion, class_names, mus):
+    """ gets all the metrics, updates the train_stats list and the dict_results_epoch for wandb
+    
+    Args:
+        stats: the statistics
+        config: the configuration
+        epoch: the epoch
+        train_stats: the training statistics
+        trainloss: the training loss
+        testloss: the test loss
+        criterion: the criterion
+        class_names: the class names
+        mus: the mus for the daily_reward_lin_regr_loss
+        
+    Returns: 
+        dict_results_epoch: the updated dictionary for wandb
+        train_stats: the updated training statistics
+    """
     dict_results_epoch = get_metrics(stats, config)
     # first update the dict_results_epoch with the correct format for train_stats
     dict_results_epoch = update_dict_result_epoch(dict_results_epoch, stats, config, epoch, trainloss, testloss, criterion)
@@ -325,6 +421,24 @@ def get_all_metrics(stats, config, epoch, train_stats, trainloss, testloss, crit
     return dict_results_epoch, train_stats
 
 def plots_during_training(epoch, stats, config, dict_results_epoch, class_names, length_sorted_doy_dict_test, mus, nclasses, sequencelength):
+    """ plots the boxplot of the stopping times, every 5 epochs. 
+        For the daily_reward loss, also plots the timestamps left.
+        For the daily_reward_lin_regr_loss, also plots the timestamps left (for each class) and the class probabilities wrt time.
+        
+    Args:
+        epoch: the epoch
+        stats: the statistics
+        config: the configuration
+        dict_results_epoch: the dictionary for wandb
+        class_names: the class names
+        length_sorted_doy_dict_test: the sorted doys dictionary
+        mus: the mus for the daily_reward_lin_regr_loss
+        nclasses: the number of classes
+        sequencelength: the sequence length
+    
+    Returns:
+        dict_results_epoch: the updated dictionary for wandb
+    """
     if epoch%5==0 or epoch==1 or epoch==config.epochs:
         fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
         if config.daily_timestamps:
@@ -358,6 +472,17 @@ def plots_during_training(epoch, stats, config, dict_results_epoch, class_names,
     return dict_results_epoch
 
 def save_model_artifact(config, model, optimizer, df):
+    """ saves the model to a file
+    
+    Args:
+        config: the configuration
+        model: the model
+        optimizer: the optimizer
+        df: the dataframe with the training statistics
+    
+    Returns:
+        savemsg: the message indicating that the model has been saved
+    """
     savemsg = f"saving model to {config.snapshot}"
     os.makedirs(os.path.dirname(config.snapshot), exist_ok=True)
     torch.save(model.state_dict(), config.snapshot)
@@ -372,6 +497,20 @@ def save_model_artifact(config, model, optimizer, df):
     return savemsg
 
 def update_patience(df, testloss, config, model, optimizer, not_improved):
+    """ updates the patience, saves the model if testloss improved
+    
+    Args:
+        df: the dataframe with the training statistics
+        testloss: the test loss
+        config: the configuration
+        model: the model
+        optimizer: the optimizer
+        not_improved: the counter for early stopping
+    
+    Returns:
+        savemsg: the message indicating that the model has been saved
+        not_improved: the updated counter for early stopping
+    """
     savemsg = ""
     if len(df) > 2:
         if testloss < df.testloss[:-1].values.min():
@@ -386,6 +525,16 @@ def update_patience(df, testloss, config, model, optimizer, not_improved):
     return savemsg, not_improved
 
 def plot_label_distribution_in_training(train_ds, test_ds, class_names):
+    """ plots the label distribution in the training and test set. Done at the beginning of the training.
+    
+    Args:
+        train_ds: the training dataset
+        test_ds: the test dataset
+        class_names: the class names
+    
+    Returns:
+        None
+    """
     datasets = [train_ds, test_ds]
     sets_labels = ["Train", "Validation"]
     fig, ax = plt.subplots(figsize=(15, 7))
@@ -394,6 +543,19 @@ def plot_label_distribution_in_training(train_ds, test_ds, class_names):
     plt.close(fig)
     
 def log_description(pbar, epoch, trainloss, testloss, dict_results_epoch, savemsg):
+    """ logs the description in the progress bar
+    
+    Args:
+        pbar: the progress bar
+        epoch: the epoch
+        trainloss: the training loss
+        testloss: the test loss
+        dict_results_epoch: the dictionary with the results
+        savemsg: the message indicating that the model has been saved
+        
+    Returns:
+        None
+    """
     pbar.set_description(f'epoch {epoch}: trainloss {trainloss:.2f}, testloss {testloss:.2f}, '
         f'accuracy {dict_results_epoch["accuracy"]:.2f}, earliness {dict_results_epoch["elects_earliness"]:.2f}, '
         f'classification loss {dict_results_epoch["classification_loss"]:.2f}, '

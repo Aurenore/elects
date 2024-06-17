@@ -7,6 +7,9 @@ import numpy as np
 from utils.metrics import harmonic_mean_score
 import sklearn.metrics
 from utils.helpers_config import set_up_config
+from data import BreizhCrops
+import os
+import json
 
 def test_epoch(model, dataloader, criterion, config, extra_padding_list:list=[0], return_id:bool=False, **kwargs):
     model.eval()
@@ -140,3 +143,33 @@ def get_test_stats_from_model(model, test_ds, criterion, config):
     testloss, stats = test_dataset(model, test_ds, criterion, args, **kwargs)
     test_stats = get_test_stats(stats, testloss, args)
     return test_stats, stats
+
+def load_test_dataset(args, sequencelength_test=150):
+    if args.dataset == "breizhcrops":
+        dataroot = os.path.join(args.dataroot,"breizhcrops")
+        input_dim = 13
+        test_ds = BreizhCrops(root=dataroot, partition="eval", sequencelength=sequencelength_test, corrected=args.corrected, \
+            daily_timestamps=args.daily_timestamps, original_time_serie_lengths=args.original_time_serie_lengths, return_id=True)
+        nclasses = test_ds.nclasses
+        class_names = test_ds.labels_names
+        print("class names:", class_names)
+    else:
+        raise ValueError(f"dataset {args.dataset} not recognized")
+    return test_ds, nclasses, class_names, input_dim
+
+
+class NumpyEncoder(json.JSONEncoder):
+    """ Custom encoder for numpy data types """
+    def default(self, obj):
+        if isinstance(obj, np.float32):
+            return float(obj)
+        return json.JSONEncoder.default(self, obj)
+
+def save_test_stats(model_path, test_stats):
+    test_stats_path = os.path.join(model_path, "test_stats.json")
+    with open(test_stats_path, "w") as f:
+        json.dump(test_stats, f, cls=NumpyEncoder)
+    print("test_stats saved at ", test_stats_path)
+    return test_stats_path
+
+

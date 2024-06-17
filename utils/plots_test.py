@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 from data import LABELS_NAMES
 from utils.helpers_testing import get_prob_t_stop
+import os
+from utils.plots import boxplot_stopping_times, plot_timestamps_left_per_class
+from utils.doy import get_doys_dict_test, get_doy_stop
 
 PALETTE=sns.color_palette("colorblind")
 
@@ -249,3 +252,55 @@ def plot_fig_class_prob_wrt_time_with_mus(fig, axes, class_prob, y_true, class_n
     fig.suptitle("Class probabilities through time", fontsize=16, y=1.)
     fig.tight_layout()
     return fig, axes
+
+
+def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, nclasses, mus, sequencelength_test):
+    """ With the stats from the test, plot all the figures. 
+        - stopping times: boxplot of the stopping times, 
+        - the confusion matrix: with accuracy, 
+        if the loss is 'daily_reward_lin_regr':
+        - the timestamps left per class:  
+        - the class probabilities wrt time and the timestamps left per class with mus and p_thresh.
+    
+    Args: 
+        - args (argparse.Namespace): arguments from the config file
+        - stats (dict): dictionary containing the stats from the test
+        - model_path (str): path to the model
+        - run_config (argparse.Namespace): arguments from the config file
+        - class_names (list): list of class names
+        - nclasses (int): number of classes
+        - mus (list): list of mus
+        - sequencelength_test (int): length of the sequence for the test dataset
+    
+    Returns:
+        None    
+    """
+    fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
+    if args.daily_timestamps:
+        doys_stop = stats["t_stop"].squeeze()
+    else: 
+        doys_dict_test = get_doys_dict_test(dataroot=os.path.join(args.dataroot,args.dataset))
+        doys_stop = get_doy_stop(stats, doys_dict_test, approximated=False)
+    fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names)
+                    
+    fig_boxplot.savefig(os.path.join(model_path, "boxplot_stopping_times.png"))
+    print("fig saved at ", os.path.join(model_path, "boxplot_stopping_times.png"))
+
+    fig, ax = plt.subplots(figsize=(7,7))
+    fig = plot_confusion_matrix(stats["targets"][:, 0], stats["predictions_at_t_stop"].flatten(), class_names, fig, ax)
+    fig.savefig(os.path.join(model_path, "confusion_matrix.png"))
+    print("fig saved at ", os.path.join(model_path, "confusion_matrix.png"))
+
+    if run_config.loss == "daily_reward_lin_regr":
+        fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
+        fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus, ylim=sequencelength_test, epoch=run_config.epochs)
+        fig_timestamps.savefig(os.path.join(model_path, "timestamps_left_per_class.png"))
+        print("fig saved at ", os.path.join(model_path, "timestamps_left_per_class.png"))
+            
+        fig_prob_class, axes_prob_class = plt.subplots(figsize=(15, 7*len(class_names)), nrows=len(class_names), sharex=True)
+        fig_prob_class, _ = plot_fig_class_prob_wrt_time_with_mus(fig_prob_class, axes_prob_class, \
+                stats["class_probabilities"], stats["targets"][:, 0], class_names, mus, run_config.p_thresh, \
+                alpha=0.1, epoch=run_config.epochs)   
+        fig_prob_class.savefig(os.path.join(model_path, "class_probabilities_wrt_time.png"))
+        print("fig saved at ", os.path.join(model_path, "class_probabilities_wrt_time.png"))
+    return
