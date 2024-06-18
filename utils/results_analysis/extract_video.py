@@ -17,7 +17,6 @@ def download_images(name_image, chosen_run, local_path):
         if file.name.startswith(images_directory_start_name):
             file.download(root=local_path, exist_ok=True)
             count+=1
-            print(f"Downloaded {file.name}")
     print(f"Total downloaded: {count} files, saved in {local_path}")
     
     
@@ -41,7 +40,6 @@ def add_files_to_images(local_path, name_image):
             
     # sort the images paths by the number after "class_probabilities_wrt_time_"
     images_paths = sorted(images_paths, key=lambda x: int(x.split(name_image)[1].split("_")[1]))
-    print("imags_paths: ", images_paths)
     
     for file_path in images_paths:
         image = imageio.imread(file_path)

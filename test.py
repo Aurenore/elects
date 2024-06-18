@@ -12,6 +12,7 @@ from utils.plots_test import plots_all_figs_at_test
 import matplotlib.pyplot as plt
 from utils.test.load_model import get_all_runs, get_loaded_model_and_criterion, get_model_and_model_path
 from utils.helpers_mu import get_mus_from_config
+from utils.results_analysis.extract_video import download_images, add_files_to_images, save_video
 import argparse
 
 def main(run_name, sequencelength_test):
@@ -61,6 +62,13 @@ def main(run_name, sequencelength_test):
 
     # ----------------------------- VISUALIZATION: stopping times and timestamps left-----------------------------
     plots_all_figs_at_test(args, stats, model_path, run_config, class_names, nclasses, mus, sequencelength_test)
+    
+    # ----------------------------- VISUALIZATION: videos of the performance during training -----------------------------
+    videos_names = ["class_probabilities_wrt_time", "boxplot", "timestamps_left_plot"]
+    for name_image in videos_names:
+        download_images(name_image, run, model_path)
+        images, images_directory = add_files_to_images(model_path, name_image)
+        video_path = save_video(images_directory, images, name_image+"_video.mp4")
 
 
 if __name__ == "__main__":
