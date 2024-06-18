@@ -38,7 +38,7 @@ def mus_should_be_updated(config, epoch, freq_update=5):
     Returns:
         bool: True if the mus should be updated, False otherwise    
     """
-    if config.loss == "daily_reward_lin_regr" and epoch>=config.start_decision_head_training and epoch%freq_update==0:
+    if "lin_regr" in config.loss and epoch>=config.start_decision_head_training and epoch%freq_update==0:
         return True
     else:
         return False
