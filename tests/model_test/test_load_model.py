@@ -7,41 +7,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(parent_dir)
 from utils.test.load_model import get_all_runs, get_best_run, download_model, get_model_and_model_path, get_loaded_model_and_criterion
 
-class TestLoadModel(): 
-    class Config():
-        def __init__(self):
-            self.alpha = 0.9
-            self.backbonemodel = "LSTM"
-            self.batchsize = 256
-            self.corrected = True
-            self.dataroot = os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")
-            self.dataset = "breizhcrops"
-            self.device = "cuda"
-            self.epochs = 100
-            self.epsilon = 10
-            self.extra_padding_list = [0]
-            self.hidden_dims = 64
-            self.learning_rate = 0.001
-            self.loss_weight = "balanced"
-            self.patience = 30
-            self.resume = False
-            self.sequencelength = 365
-            self.validation_set = "valid"
-            self.weight_decay = 0
-            self.daily_timestamps = True
-            self.original_time_serie_lengths = [102]
-            self.loss = "daily_reward_piecewise_lin_regr"
-            self.day_head_init_bias = 5
-            self.decision_head = "day"
-            self.start_decision_head_training = 0
-            self.alpha_decay = [0.9, 0.6]
-            self.percentage_earliness_reward = 0.9
-            self.mu = 150.
-            
-        def update(self, dict_args: dict):
-            for key, value in dict_args.items():
-                setattr(self, key, value)
-    
+class TestLoadModel():     
     def test_get_all_runs(self):
         entity, project = "aurenore", "MasterThesis"
         runs_df, runs = get_all_runs(entity, project)
