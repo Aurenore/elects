@@ -291,7 +291,7 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
     fig.savefig(os.path.join(model_path, "confusion_matrix.png"))
     print("fig saved at ", os.path.join(model_path, "confusion_matrix.png"))
 
-    if run_config.loss == "daily_reward_lin_regr":
+    if "lin_regr" in run_config.loss:
         fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
         fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus, ylim=sequencelength_test, epoch=run_config.epochs)
         fig_timestamps.savefig(os.path.join(model_path, "timestamps_left_per_class.png"))
