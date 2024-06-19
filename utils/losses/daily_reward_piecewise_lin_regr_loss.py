@@ -20,8 +20,8 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
             epochs (int, optional): number of epochs. Defaults to 100.
             start_decision_head_training (int, optional): epoch to start training the decision head (i.e. when alpha_1<1.). Defaults to 0.
             factor (str): factor for the wrong prediction penalty. Can be 
-             - "v1": (z_t/T)*(1-t/T)
-             - "v2": (t + z_t)/T
+                - "v1": (z_t/T)*(1-t/T)
+                - "v2": (t + z_t)/T
         """
         assert factor in ["v1", "v2"], f"factor {factor} not implemented"
         super(DailyRewardPiecewiseLinRegrLoss, self).__init__(alpha=alpha, weight=weight, alpha_decay=alpha_decay, epochs=epochs, start_decision_head_training=start_decision_head_training, **kwargs)
@@ -65,7 +65,7 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
         # final loss
         other_alpha = (1.-self.alpha)/3.
         self.alphas = torch.tensor([self.alpha, other_alpha, other_alpha, other_alpha], device=log_class_probabilities.device)
-        loss = self.alphas[0]*classification_loss - self.alphas[1]*earliness_reward - self.alphas[2]*wrong_pred_penalty + self.alphas[2]*lin_regr_zt_loss
+        loss = self.alphas[0]*classification_loss - self.alphas[1]*earliness_reward + self.alphas[2]*wrong_pred_penalty + self.alphas[2]*lin_regr_zt_loss
 
         if return_stats:
             stats = dict(
@@ -94,7 +94,7 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
         
         """
         if self.factor == "v1":
-            factor = (1-t/T)*(1-timestamps_left.float()/T)
+            factor = (1.-t/T)*(timestamps_left.float()/T)*(-1.)
         elif self.factor == "v2":
             factor = (t + timestamps_left.float())/T
         else: 
