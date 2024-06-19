@@ -3,6 +3,7 @@ import os
 from tqdm import tqdm
 import torch
 import numpy as np 
+import pytest
 parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(parent_dir)
 from utils.helpers_config import set_up_config
@@ -12,11 +13,12 @@ from utils.helpers_training import train_epoch, set_up_model, set_up_optimizer, 
     plots_during_training, load_dataset, plot_label_distribution_in_training 
 from utils.helpers_config import set_up_config
 from utils.helpers_testing import test_epoch as run_test_epoch
+from utils.losses.daily_reward_piecewise_lin_regr_loss import DailyRewardPiecewiseLinRegrLoss
 
 class TestDailyRewardPiecewiseLinRegrLoss(): 
     class Config():
         def __init__(self):
-            self.alpha = 0.9
+            self.alpha = 1.
             self.backbonemodel = "LSTM"
             self.batchsize = 256
             self.corrected = True
@@ -40,19 +42,57 @@ class TestDailyRewardPiecewiseLinRegrLoss():
             self.day_head_init_bias = 5
             self.decision_head = "day"
             self.start_decision_head_training = 0
-            self.alpha_decay = [0.9, 0.6]
-            self.percentage_earliness_reward = 0.9
+            self.alpha_decay = [1., 0.6]
             self.mu = 150.
-            self.factor = "v1"
+            self.factor = "v2"
             
         def update(self, dict_args: dict):
             for key, value in dict_args.items():
                 setattr(self, key, value)
                 
-    def test_instantiation(self): 
+    @pytest.fixture
+    def config(self):
+        return self.Config()
+    
+    def test_update_alphas(self, config):
+        config, extra_padding_list = set_up_config(config)
+        nclasses, input_dim = 7, 13
+        class_weights = torch.tensor(np.random.rand(nclasses))
+        criterion, mus, mu = set_up_criterion(config, class_weights, nclasses, wandb_update=False)
+        if config.loss == "daily_reward_piecewise_lin_regr":
+            assert isinstance(criterion, torch.nn.Module), "Criterion should be a torch module."
+            assert isinstance(criterion, DailyRewardPiecewiseLinRegrLoss), "Criterion should be a DailyRewardPiecewiseLinRegrLoss."
+            assert criterion.alpha == config.alpha, f"Alpha should be {config.alpha}, but is {criterion.alpha}."
+            assert criterion.factor == config.factor, f"Factor should be {config.factor}, but is {criterion.factor}."
+            assert criterion.alpha_decay_max == config.alpha_decay[0], f"Alpha decay max should be {config.alpha_decay[0]}, but is {criterion.alpha_decay_max}."
+            assert criterion.alpha_decay_min == config.alpha_decay[1], f"Alpha decay min should be {config.alpha_decay[1]}, but is {criterion.alpha_decay_min}."
+            assert criterion.epochs == config.epochs, f"Epochs should be {config.epochs}, but is {criterion.epochs}."
+            assert criterion.start_decision_head_training == config.start_decision_head_training, f"Start decision head training should be {config.start_decision_head_training}, but is {criterion.start_decision_head_training}."
+            assert criterion.percentages_other_alphas is not None, "Percentages other alphas should not be None."
+        assert len(criterion.percentages_other_alphas) == 3, "Percentages other alphas should have length 3."
+        assert torch.isclose(criterion.alphas.sum(), torch.tensor(1.)), f"Alphas should sum to 1, but sum is {criterion.alphas.sum()}."
+        
+    def test_update_alphas_during_training(self, config):
+        config, extra_padding_list = set_up_config(config)
+        nclasses, input_dim = 7, 13
+        class_weights = torch.tensor(np.random.rand(nclasses))
+        criterion, mus, mu = set_up_criterion(config, class_weights, nclasses, wandb_update=False)
+        assert np.isclose(criterion.alphas[0], criterion.alpha), f"{criterion.alphas[0]} != {criterion.alpha}"
+        
+        for epoch in range(1, 100):
+            criterion.update_alphas_at_epoch(epoch, config.device)
+            assert np.isclose(sum(criterion.alphas), 1), f"Alphas should sum to 1, but sum is {sum(criterion.alphas)}."
+            if epoch >= config.start_decision_head_training:
+                assert np.isclose(criterion.alphas[0], criterion.alpha_decay_min + (criterion.alpha_decay_max - criterion.alpha_decay_min) * \
+                    (1 - (epoch-config.start_decision_head_training)/(config.epochs-config.start_decision_head_training))), \
+                    f"at epoch {epoch}, {criterion.alphas[0]} != {criterion.alpha_decay_min + (criterion.alpha_decay_max - criterion.alpha_decay_min) * (1 - (epoch-config.start_decision_head_training)/(config.epochs-config.start_decision_head_training))}"
+                assert np.isclose(criterion.alphas[1], criterion.percentages_other_alphas[0]*(1.-criterion.alpha)), f"at epoch {epoch}, {criterion.alphas[1]} != {criterion.percentages_other_alphas[0]*(1.-criterion.alpha)}" 
+                assert np.isclose(criterion.alphas[2], criterion.percentages_other_alphas[1]*(1.-criterion.alpha)), f"at epoch {epoch}, {criterion.alphas[2]} != {criterion.percentages_other_alphas[1]*(1.-criterion.alpha)}"
+                assert np.isclose(criterion.alphas[3], criterion.percentages_other_alphas[2]*(1.-criterion.alpha)), f"at epoch {epoch}, {criterion.alphas[3]} != {criterion.percentages_other_alphas[2]*(1.-criterion.alpha)}"         
+                    
+    def test_instantiation(self, config): 
         torch.autograd.set_detect_anomaly(True)
-
-        config = self.Config()
+        config.update({"alpha": 0.9, "alpha_decay": [0.9, 0.6]})
         config, extra_padding_list = set_up_config(config)
         assert config is not None, "Config setup failed."
         assert isinstance(extra_padding_list, list), "Extra padding list should be a list."
@@ -68,7 +108,7 @@ class TestDailyRewardPiecewiseLinRegrLoss():
         
         for factor in ["v1", "v2"]:
             config.update({"factor": factor})
-            criterion, mus, mu = set_up_criterion(config, class_weights, nclasses)
+            criterion, mus, mu = set_up_criterion(config, class_weights, nclasses, wandb_update=False)
             assert len(mus) == nclasses, "Mus should be of length nclasses."
             assert criterion.__class__.__name__ == "DailyRewardPiecewiseLinRegrLoss", "Criterion should be a DailyRewardPiecewiseLinRegrLoss."
             assert criterion.factor == factor, "Factor should be the same."
@@ -89,8 +129,5 @@ class TestDailyRewardPiecewiseLinRegrLoss():
                     assert isinstance(stats["wrong_pred_penalty"], (np.ndarray, torch.Tensor)), "Wrong pred penalty should be an array."
                     assert sum(criterion.alphas) == 1, "Alphas should sum to 1."
                     break
-            
-
-            
-            
-            
+                break
+        torch.autograd.set_detect_anomaly(False)

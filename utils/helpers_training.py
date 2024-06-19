@@ -227,7 +227,7 @@ def set_up_class_weights(config, train_ds):
     config.update({"class_weights": class_weights.cpu().detach().numpy() if class_weights is not None else None})
     return class_weights
     
-def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None):
+def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None, wandb_update: bool=True):
     """ sets up the criterion
     
     Args:
@@ -262,7 +262,8 @@ def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None):
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0)
     elif config.loss == "daily_reward_lin_regr":
         dict_criterion = {"mus": mus, \
-                "percentage_earliness_reward": config.percentage_earliness_reward if hasattr(config, "percentage_earliness_reward") else 0.9,}
+                "percentage_earliness_reward": config.percentage_earliness_reward if hasattr(config, "percentage_earliness_reward") else 0.9,
+                "percentage_other_alphas": config.percentage_other_alphas if hasattr(config, "percentage_other_alphas") else None}
         criterion = DailyRewardLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
             **dict_criterion)
@@ -271,6 +272,11 @@ def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None):
         criterion = DailyRewardPiecewiseLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
             factor=config.factor, **dict_criterion)
+        if wandb_update:
+            wandb.config.update({"percentages_other_alphas": criterion.percentages_other_alphas.cpu().detach().numpy()})
+            wandb.config.update({"percentage_alpha_1": criterion.percentages_other_alphas[0].cpu().detach().numpy()})
+            wandb.config.update({"percentage_alpha_2": criterion.percentages_other_alphas[1].cpu().detach().numpy()})
+            wandb.config.update({"percentage_alpha_3": criterion.percentages_other_alphas[2].cpu().detach().numpy()})
     else: 
         print(f"loss {config.loss} not recognized, loss set to default: early_reward")
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)

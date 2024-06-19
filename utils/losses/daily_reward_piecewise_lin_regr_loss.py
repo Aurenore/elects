@@ -3,6 +3,7 @@ from torch import nn
 from utils.losses.loss_helpers import probability_correct_class, probability_wrong_class, \
     log_class_prob_at_t_plus_zt
 from utils.losses.daily_reward_lin_regr_loss import DailyRewardLinRegrLoss, lin_regr_zt
+from utils.random_numbers import sample_three_uniform_numbers
 
 class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
     def __init__(self, alpha:float=1., weight=None, alpha_decay: list=None, epochs: int=100, start_decision_head_training: int=0, factor: str="v1", **kwargs):
@@ -11,7 +12,7 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
             alpha_1 + alpha_2 + alpha_3 + alpha_4 = 1
             alpha_1 decreases through the epochs, while alpha_2, alpha_3 and alpha_4 increase.
             alpha_1 decreases according to alpha_decay_max and alpha_decay_min
-            alpha_2, alpha_3 and alpha_4 are set to 1-alpha_1/3
+            alpha_2, alpha_3 and alpha_4 are set randomly during the training, such that the conditions are always satisfied.
         Args:
             alpha (float, optional): _description_. Defaults to 1.
             weight (list, optional): weight for each class, shape: (nclasses). Defaults to None.
@@ -26,6 +27,16 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
         assert factor in ["v1", "v2"], f"factor {factor} not implemented"
         super(DailyRewardPiecewiseLinRegrLoss, self).__init__(alpha=alpha, weight=weight, alpha_decay=alpha_decay, epochs=epochs, start_decision_head_training=start_decision_head_training, **kwargs)
         self.factor = factor
+        if "percentages_other_alphas" in kwargs:
+            if kwargs["percentages_other_alphas"] is not None:
+                if len(kwargs["percentages_other_alphas"]) != 3:
+                    raise ValueError("percentages_other_alphas should have length 3.")
+                if not torch.isclose(torch.tensor(kwargs["percentages_other_alphas"]).sum(), torch.tensor(1.)):
+                    raise ValueError("percentages_other_alphas should sum to 1.")
+                self.percentages_other_alphas = kwargs["percentages_other_alphas"]
+        else: 
+            self.percentages_other_alphas = sample_three_uniform_numbers()
+        self.alphas = self.update_alphas(self.alpha, weight.device)
         
     def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False, **kwargs):
         N, T, C = log_class_probabilities.shape
@@ -36,12 +47,8 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
                 torch.arange(T).type(torch.FloatTensor).to(log_class_probabilities.device)
         log_class_probabilities_at_t_plus_zt = log_class_prob_at_t_plus_zt(log_class_probabilities, timestamps_left)
 
-        # compute alpha
-        if hasattr(self, "alpha_decay_max"):
-            if epoch >= self.start_decision_head_training:
-                # alpha goes from alpha_decay_max to alpha_decay_min linearly
-                self.alpha = self.alpha_decay_min + (self.alpha_decay_max - self.alpha_decay_min) * \
-                    (1 - (epoch-self.start_decision_head_training)/(self.epochs-self.start_decision_head_training))
+        # compute the new alpha
+        self.alphas = self.update_alphas_at_epoch(epoch, log_class_probabilities.device)
                             
         # earliness reward, wrong prediction penalty and piecewise linear regression loss
         if epoch>=self.start_decision_head_training and self.alpha<1.-1e-8:
@@ -63,8 +70,6 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
         classification_loss = cross_entropy.sum(1).mean(0)
 
         # final loss
-        other_alpha = (1.-self.alpha)/3.
-        self.alphas = torch.tensor([self.alpha, other_alpha, other_alpha, other_alpha], device=log_class_probabilities.device)
         loss = self.alphas[0]*classification_loss - self.alphas[1]*earliness_reward + self.alphas[2]*wrong_pred_penalty + self.alphas[2]*lin_regr_zt_loss
 
         if return_stats:
@@ -102,4 +107,42 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
         wrong_pred_penalty = probability_wrong_class(log_class_probabilities_at_t_plus_zt, y_true, weight=self.weight) * factor
         wrong_pred_penalty = wrong_pred_penalty.sum(1).mean(0) # sum over time, mean over batch 
         return wrong_pred_penalty
+        
+    def update_alphas_at_epoch(self, epoch: int, device: torch.device) -> None:
+        """ update the alphas at the given epoch.
+            The alphas are updated according to the alpha_decay_max and alpha_decay_min.
+            They decay linearly from alpha_decay_max to alpha_decay_min.
+            
+        Args:
+            epoch (int): current epoch
+            device (torch.device): device
+        
+        Returns:
+            alphas (torch.Tensor): alphas, shape: (4)
+        
+        """
+        if hasattr(self, "alpha_decay_max"):
+            if epoch >= self.start_decision_head_training:
+                # alpha goes from alpha_decay_max to alpha_decay_min linearly
+                self.alpha = self.alpha_decay_min + (self.alpha_decay_max - self.alpha_decay_min) * \
+                    (1 - (epoch-self.start_decision_head_training)/(self.epochs-self.start_decision_head_training))
+                alphas = self.update_alphas(self.alpha, device)
+                self.alphas = alphas
+        return alphas
+                
+    def update_alphas(self, alpha: float, device: torch.device) -> None:
+        """ update the alphas. 
+            The first alpha is self.alpha, and the other ones are given by the percentages_other_alphas of the remaining part.
+            
+        Args:
+            alpha (float): the first alpha
+            device (torch.device): device
+        
+        Returns:
+            alphas (torch.Tensor): alphas, shape: (4)
+            
+        """
+        alphas = torch.tensor([alpha, *self.percentages_other_alphas*(1.-alpha)], device=self.weight.device)
+        assert torch.isclose(alphas.sum(), torch.tensor(1., device=device)), "Alphas should sum to 1."
+        return alphas 
         
