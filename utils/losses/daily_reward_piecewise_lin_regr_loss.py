@@ -5,7 +5,7 @@ from utils.losses.loss_helpers import probability_correct_class, probability_wro
 from utils.losses.daily_reward_lin_regr_loss import DailyRewardLinRegrLoss, lin_regr_zt
 
 class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
-    def __init__(self, alpha:float=1., weight=None, alpha_decay: list=None, epochs: int=100, start_decision_head_training: int=0, **kwargs):
+    def __init__(self, alpha:float=1., weight=None, alpha_decay: list=None, epochs: int=100, start_decision_head_training: int=0, factor: str="v1", **kwargs):
         """ instantiate the loss function for the daily reward with a piecewise linear regression loss. 
             alpha_1*classification_loss - alpha_2*earliness_reward - alphas_3*wrong_pred_penalty + alpha_4*lin_regr_zt_loss
             alpha_1 + alpha_2 + alpha_3 + alpha_4 = 1
@@ -19,9 +19,14 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
                         and get closer to alpha_decay_min. Defaults to None.
             epochs (int, optional): number of epochs. Defaults to 100.
             start_decision_head_training (int, optional): epoch to start training the decision head (i.e. when alpha_1<1.). Defaults to 0.
+            factor (str): factor for the wrong prediction penalty. Can be 
+             - "v1": (z_t/T)*(1-t/T)
+             - "v2": (t + z_t)/T
         """
+        assert factor in ["v1", "v2"], f"factor {factor} not implemented"
         super(DailyRewardPiecewiseLinRegrLoss, self).__init__(alpha=alpha, weight=weight, alpha_decay=alpha_decay, epochs=epochs, start_decision_head_training=start_decision_head_training, **kwargs)
-
+        self.factor = factor
+        
     def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False, **kwargs):
         N, T, C = log_class_probabilities.shape
         epoch = kwargs.get("epoch", 0)
@@ -43,8 +48,7 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
             earliness_reward = probability_correct_class(log_class_probabilities_at_t_plus_zt, y_true, weight=self.weight) * (1-t/T) * (1-timestamps_left.float()/T)
             earliness_reward = earliness_reward.sum(1).mean(0)
             
-            wrong_pred_penalty = probability_wrong_class(log_class_probabilities_at_t_plus_zt, y_true, weight=self.weight) * (1-t/T) * (timestamps_left.float()/T)
-            wrong_pred_penalty = wrong_pred_penalty.sum(1).mean(0) # sum over time, mean over batch 
+            wrong_pred_penalty = self.compute_wrong_prediction_penalty(log_class_probabilities_at_t_plus_zt, timestamps_left, y_true, t, T)
             
             lin_regr_zt_loss = lin_regr_zt(t, T, self.mus, timestamps_left.float(), y_true) # (N, T)
             lin_regr_zt_loss = lin_regr_zt_loss.sum(1).mean(0) # sum over time, mean over batch
@@ -74,3 +78,28 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
             return loss, stats
         else:
             return loss
+        
+    def compute_wrong_prediction_penalty(self, log_class_probabilities_at_t_plus_zt, timestamps_left, y_true, t, T):
+        """ compute the wrong prediction penalty, depending on the factor. 
+        
+        Args:
+            log_class_probabilities_at_t_plus_zt (torch.Tensor): log class probabilities at t+z_t, shape: (N, T, C)
+            timestamps_left (torch.Tensor): timestamps left, shape: (N, T)
+            y_true (torch.Tensor): true labels, shape: (N, T)
+            t (torch.Tensor): current time, shape: (N, T)
+            T (int): total number of timestamps
+        
+        Returns:
+            wrong_pred_penalty (torch.Tensor): wrong prediction penalty, shape: (1)
+        
+        """
+        if self.factor == "v1":
+            factor = (1-t/T)*(1-timestamps_left.float()/T)
+        elif self.factor == "v2":
+            factor = (t + timestamps_left.float())/T
+        else: 
+            raise ValueError(f"factor {self.factor} not implemented")
+        wrong_pred_penalty = probability_wrong_class(log_class_probabilities_at_t_plus_zt, y_true, weight=self.weight) * factor
+        wrong_pred_penalty = wrong_pred_penalty.sum(1).mean(0) # sum over time, mean over batch 
+        return wrong_pred_penalty
+        

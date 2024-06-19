@@ -43,6 +43,7 @@ class TestDailyRewardPiecewiseLinRegrLoss():
             self.alpha_decay = [0.9, 0.6]
             self.percentage_earliness_reward = 0.9
             self.mu = 150.
+            self.factor = "v1"
             
         def update(self, dict_args: dict):
             for key, value in dict_args.items():
@@ -62,29 +63,33 @@ class TestDailyRewardPiecewiseLinRegrLoss():
         optimizer = set_up_optimizer(config, model)
         class_weights = set_up_class_weights(config, train_ds)
         assert len(class_weights) == nclasses, "Class weights should be of length nclasses."
-        criterion, mus, mu = set_up_criterion(config, class_weights, nclasses)
-        assert len(mus) == nclasses, "Mus should be of length nclasses."
-        assert criterion.__class__.__name__ == "DailyRewardPiecewiseLinRegrLoss", "Criterion should be a DailyRewardPiecewiseLinRegrLoss."
-        
         train_stats, start_epoch = set_up_resume(config, model, optimizer)
         not_improved = 0
         
-        with tqdm(range(start_epoch, config.epochs + 1)) as pbar:
-            for epoch in pbar:
-                if mus_should_be_updated(config, epoch):
-                    mus = update_mus_during_training(config, criterion, stats, epoch, mus, mu)
-                
-                # train and test epoch
-                dict_args = {"epoch": epoch}
-                trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, extra_padding_list=extra_padding_list, **dict_args)
-                testloss, stats = run_test_epoch(model, testdataloader, criterion, config, extra_padding_list=extra_padding_list, return_id=test_ds.return_id, **dict_args)
-                assert isinstance(trainloss, (float, np.float32, np.float64)), "Train loss should be a float."
-                assert isinstance(testloss, (float, np.float32, np.float64)), "Test loss should be a float."
-                assert isinstance(stats, dict), "Stats should be a dictionary."
-                assert "wrong_pred_penalty" in stats, "Stats should contain wrong_pred_penalty."
-                assert isinstance(stats["wrong_pred_penalty"], (np.ndarray, torch.Tensor)), "Wrong pred penalty should be an array."
-                assert sum(criterion.alphas) == 1, "Alphas should sum to 1."
-                break
+        for factor in ["v1", "v2"]:
+            config.update({"factor": factor})
+            criterion, mus, mu = set_up_criterion(config, class_weights, nclasses)
+            assert len(mus) == nclasses, "Mus should be of length nclasses."
+            assert criterion.__class__.__name__ == "DailyRewardPiecewiseLinRegrLoss", "Criterion should be a DailyRewardPiecewiseLinRegrLoss."
+            assert criterion.factor == factor, "Factor should be the same."
+        
+            with tqdm(range(start_epoch, config.epochs + 1)) as pbar:
+                for epoch in pbar:
+                    if mus_should_be_updated(config, epoch):
+                        mus = update_mus_during_training(config, criterion, stats, epoch, mus, mu)
+                    
+                    # train and test epoch
+                    dict_args = {"epoch": epoch}
+                    trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, extra_padding_list=extra_padding_list, **dict_args)
+                    testloss, stats = run_test_epoch(model, testdataloader, criterion, config, extra_padding_list=extra_padding_list, return_id=test_ds.return_id, **dict_args)
+                    assert isinstance(trainloss, (float, np.float32, np.float64)), "Train loss should be a float."
+                    assert isinstance(testloss, (float, np.float32, np.float64)), "Test loss should be a float."
+                    assert isinstance(stats, dict), "Stats should be a dictionary."
+                    assert "wrong_pred_penalty" in stats, "Stats should contain wrong_pred_penalty."
+                    assert isinstance(stats["wrong_pred_penalty"], (np.ndarray, torch.Tensor)), "Wrong pred penalty should be an array."
+                    assert sum(criterion.alphas) == 1, "Alphas should sum to 1."
+                    break
+            
 
             
             
