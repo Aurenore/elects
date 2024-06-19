@@ -121,13 +121,14 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
             alphas (torch.Tensor): alphas, shape: (4)
         
         """
+        alphas = self.alphas
         if hasattr(self, "alpha_decay_max"):
             if epoch >= self.start_decision_head_training:
                 # alpha goes from alpha_decay_max to alpha_decay_min linearly
                 self.alpha = self.alpha_decay_min + (self.alpha_decay_max - self.alpha_decay_min) * \
                     (1 - (epoch-self.start_decision_head_training)/(self.epochs-self.start_decision_head_training))
                 alphas = self.update_alphas(self.alpha, device)
-                self.alphas = alphas
+                self.alphas = alphas            
         return alphas
                 
     def update_alphas(self, alpha: float, device: torch.device) -> None:

@@ -262,13 +262,13 @@ def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None, wa
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0)
     elif config.loss == "daily_reward_lin_regr":
         dict_criterion = {"mus": mus, \
-                "percentage_earliness_reward": config.percentage_earliness_reward if hasattr(config, "percentage_earliness_reward") else 0.9,
-                "percentage_other_alphas": config.percentage_other_alphas if hasattr(config, "percentage_other_alphas") else None}
+                "percentage_earliness_reward": config.percentage_earliness_reward if hasattr(config, "percentage_earliness_reward") else 0.9,}
         criterion = DailyRewardLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
             **dict_criterion)
     elif config.loss == "daily_reward_piecewise_lin_regr":
-        dict_criterion = {"mus": mus}
+        dict_criterion = {"mus": mus,
+                        "percentage_other_alphas": config.percentage_other_alphas if hasattr(config, "percentage_other_alphas") else None}
         criterion = DailyRewardPiecewiseLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
             start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
             factor=config.factor, **dict_criterion)
