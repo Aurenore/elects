@@ -70,7 +70,7 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
         classification_loss = cross_entropy.sum(1).mean(0)
 
         # final loss
-        loss = self.alphas[0]*classification_loss - self.alphas[1]*earliness_reward + self.alphas[2]*wrong_pred_penalty + self.alphas[2]*lin_regr_zt_loss
+        loss = self.alphas[0]*classification_loss - self.alphas[1]*earliness_reward + self.alphas[2]*wrong_pred_penalty + self.alphas[3]*lin_regr_zt_loss
 
         if return_stats:
             stats = dict(
