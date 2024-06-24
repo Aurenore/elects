@@ -23,7 +23,7 @@ from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times
     plot_timestamps_left_per_class
 from utils.plots_test import plot_fig_class_prob_wrt_time_with_mus
 from utils.doy import get_doys_dict_test, get_doy_stop, create_sorted_doys_dict_test, get_approximated_doys_dict
-from utils.metrics import harmonic_mean_score
+from utils.metrics import harmonic_mean_score, get_std_score
 from models.model_helpers import count_parameters
 import matplotlib.pyplot as plt
 
@@ -341,6 +341,7 @@ def get_metrics(stats, config):
     earliness_reward = stats["earliness_reward"].mean()
     earliness = 1 - (stats["t_stop"].mean() / (config.sequencelength - 1))
     harmonic_mean = harmonic_mean_score(accuracy, earliness)
+    std_score = get_std_score(stats, config.nclasses)
     dict_results = {                 
         "accuracy": accuracy,
         "precision": precision,
@@ -351,6 +352,7 @@ def get_metrics(stats, config):
         "classification_loss": classification_loss,
         "earliness_reward": earliness_reward,
         "harmonic_mean": harmonic_mean,
+        "std_score": std_score,
             }
     return dict_results
 
