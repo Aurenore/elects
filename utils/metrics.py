@@ -1,6 +1,6 @@
 import numpy as np
 
-def get_std_score(stats, nclasses: int)->float:
+def get_std_score(stats: dict, nclasses: int)->float:
     """
     For each class, get the standard deviation of the stopping times
     
