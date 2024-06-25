@@ -306,7 +306,7 @@ def set_up_resume(config, model, optimizer):
     return train_stats, start_epoch
 
 
-def get_metrics(stats, config):
+def get_metrics(stats, config, nclasses):
     """ computes the metrics from the statistics
     
     Args:
@@ -337,7 +337,7 @@ def get_metrics(stats, config):
     earliness_reward = stats["earliness_reward"].mean()
     earliness = 1 - (stats["t_stop"].mean() / (config.sequencelength - 1))
     harmonic_mean = harmonic_mean_score(accuracy, earliness)
-    std_score = get_std_score(stats, config.nclasses)
+    std_score = get_std_score(stats, nclasses)
     dict_results = {                 
         "accuracy": accuracy,
         "precision": precision,
@@ -430,7 +430,7 @@ def get_all_metrics(stats, config, epoch, train_stats, trainloss, testloss, crit
         dict_results_epoch: the updated dictionary for wandb
         train_stats: the updated training statistics
     """
-    dict_results_epoch = get_metrics(stats, config)
+    dict_results_epoch = get_metrics(stats, config, nclasses=len(class_names))
     # first update the dict_results_epoch with the correct format for train_stats
     dict_results_epoch = update_dict_result_epoch(dict_results_epoch, stats, config, epoch, trainloss, testloss, criterion)
     train_stats.append(copy.deepcopy(dict_results_epoch))
