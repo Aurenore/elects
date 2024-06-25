@@ -78,3 +78,9 @@ def save_config(model_path: str, run):
         json.dump(run.config, f)
     print("config file saved at: ", config_path)
     return config_path
+
+def print_config(run):
+    print("-"*50, "Configuration:", "-"*50)
+    for key, value in run.config.items():
+        print(f"{key}: {value}")
+    print("-"*150)

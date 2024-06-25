@@ -6,7 +6,7 @@
 import os 
 os.environ['MPLCONFIGDIR'] = '/myhome'
 from utils.plots import plot_label_distribution_datasets
-from utils.helpers_config import set_up_config, save_config
+from utils.helpers_config import set_up_config, save_config, print_config
 from utils.test.helpers_testing import get_test_stats_from_model, load_test_dataset, save_test_stats
 from utils.plots_test import plots_all_figs_at_test
 import matplotlib.pyplot as plt
@@ -32,10 +32,7 @@ def main(run_name, sequencelength_test):
 
     # get and save the config
     config_path = save_config(model_path, run)
-    print("config:")
-    for key, value in run.config.items():
-        print(f"{key}: {value}")
-
+    print_config(run)
     args  = set_up_config(run_config)
     args.dataroot = local_dataroot
 

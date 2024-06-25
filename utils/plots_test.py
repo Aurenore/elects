@@ -150,7 +150,14 @@ def plot_confusion_matrix(y_true, y_pred, class_names, fig, ax, normalize=None):
     conf_mat = confusion_matrix(y_true, y_pred, normalize=normalize)
     
     # Plot the confusion matrix
-    sns.heatmap(conf_mat.T, annot=True, cmap='Blues', ax=ax, xticklabels=class_names, yticklabels=class_names, fmt='d')
+    if normalize is None: 
+        fmt = 'd'
+    elif normalize=="true":
+        # format in percentage %, with 1 decimal
+        fmt = '.1%'
+    else:
+        fmt = '.1f'
+    sns.heatmap(conf_mat.T, annot=True, cmap='Blues', ax=ax, xticklabels=class_names, yticklabels=class_names, fmt=fmt)
 
     # Labels, title and ticks
     ax.set_xlabel('True labels')
