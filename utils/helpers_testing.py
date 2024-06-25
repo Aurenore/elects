@@ -11,15 +11,12 @@ from data import BreizhCrops
 import os
 import json
 
-def test_epoch(model, dataloader, criterion, config, extra_padding_list:list=[0], return_id:bool=False, **kwargs):
+def test_epoch(model, dataloader, criterion, config, return_id:bool=False, **kwargs):
     model.eval()
 
     stats = []
     losses = []
     slengths = []
-
-    # sort the padding in descending order
-    extra_padding_list = sorted(extra_padding_list, reverse=True)
 
     for ids, batch in enumerate(dataloader):
         if not return_id:
@@ -35,38 +32,9 @@ def test_epoch(model, dataloader, criterion, config, extra_padding_list:list=[0]
             seqlengths = 365*torch.ones(X.shape[0], device=config.device)
         slengths.append(seqlengths.cpu().detach())
         
-        # by default, we predict the sequence with the smallest padding
-        extra_padding = extra_padding_list[-1]
-        dict_padding = {"extra_padding": extra_padding, "epoch": kwargs.get("epoch", 0), "criterion_alpha": criterion.alpha}
+        dict_pred = {"epoch": kwargs.get("epoch", 0), "criterion_alpha": criterion.alpha}
 
-        # predict the sequence with the smallest padding
-        log_class_probabilities, stopping_criteria, predictions_at_t_stop, t_stop = model.predict(X, **dict_padding)
-            
-        if len(extra_padding_list) > 1:
-            assert not config.daily_timestamps, "Extra padding is not implemented for daily_timestamps"
-            # mask for sequences that are not predicted yet
-            unpredicted_seq_mask = torch.ones(X.shape[0], dtype=bool).to(config.device)
-            # index for the extra_padding_list
-            i=0 
-            while unpredicted_seq_mask.any() and i < len(extra_padding_list)-1:
-                extra_padding = extra_padding_list[i]
-                dict_padding = {"extra_padding": extra_padding}
-                log_class_probabilities_temp, stopping_criteria_temp, predictions_at_t_stop_temp, t_stop_temp = model.predict(X, **dict_padding)
-                if model.left_padding:
-                    seqlengths_temp = seqlengths - extra_padding
-                else:
-                    # non-zero sequence lengths is the min between nonzero_seqlengths and sequencelength - padding 
-                    seqlengths_temp = torch.min(seqlengths, torch.tensor(model.sequence_length - extra_padding, device=config.device))
-                # update the mask if t_stop is different from the length of the padded sequence (i.e. the sequence is predicted before its end)
-                unpredicted_seq_mask = unpredicted_seq_mask*(t_stop_temp > seqlengths_temp)
-            
-                # update the metrics data with the mask of predicted sequences
-                log_class_probabilities = torch.where(~unpredicted_seq_mask.unsqueeze(1).unsqueeze(-1), log_class_probabilities_temp, log_class_probabilities)
-                stopping_criteria = torch.where(~unpredicted_seq_mask.unsqueeze(1), stopping_criteria_temp, stopping_criteria)
-                predictions_at_t_stop = torch.where(~unpredicted_seq_mask, predictions_at_t_stop_temp, predictions_at_t_stop)
-                t_stop = torch.where(~unpredicted_seq_mask, t_stop_temp, t_stop)
-                i+=1
-
+        log_class_probabilities, stopping_criteria, predictions_at_t_stop, t_stop = model.predict(X, **dict_pred)
         loss, stat = criterion(log_class_probabilities, stopping_criteria, y_true, return_stats=True, **kwargs)
         stat["loss"] = loss.cpu().detach().numpy()
         # depending of the model, we define the probability of stopping or the timestamps left as the stopping criteria
@@ -94,8 +62,7 @@ def test_dataset(model, test_ds, criterion, config, **kwargs):
     model.eval()
     with torch.no_grad():
         dataloader = DataLoader(test_ds, batch_size=config.batchsize)
-        loss, stats = test_epoch(model, dataloader, criterion, config, extra_padding_list=config.extra_padding_list, \
-            return_id=test_ds.return_id, **kwargs)
+        loss, stats = test_epoch(model, dataloader, criterion, config, return_id=test_ds.return_id, **kwargs)
     return loss, stats
 
 
@@ -143,6 +110,7 @@ def get_test_stats_from_model(model, test_ds, criterion, config):
     testloss, stats = test_dataset(model, test_ds, criterion, args, **kwargs)
     test_stats = get_test_stats(stats, testloss, args)
     return test_stats, stats
+
 
 def load_test_dataset(args, sequencelength_test=150):
     if args.dataset == "breizhcrops":

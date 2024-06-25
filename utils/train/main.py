@@ -15,7 +15,7 @@ from utils.helpers_testing import test_epoch
 
 def main_train(config):
     # ----------------------------- CONFIGURATION -----------------------------
-    config, extra_padding_list = set_up_config(config)
+    config = set_up_config(config)
     
     # ----------------------------- LOAD DATASET -----------------------------
     traindataloader, testdataloader, train_ds, test_ds, nclasses, class_names, input_dim, length_sorted_doy_dict_test = load_dataset(config)
@@ -40,8 +40,8 @@ def main_train(config):
             
             # train and test epoch
             dict_args = {"epoch": epoch}
-            trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, extra_padding_list=extra_padding_list, **dict_args)
-            testloss, stats = test_epoch(model, testdataloader, criterion, config, extra_padding_list=extra_padding_list, return_id=test_ds.return_id, **dict_args)
+            trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, **dict_args)
+            testloss, stats = test_epoch(model, testdataloader, criterion, config, return_id=test_ds.return_id, **dict_args)
 
             # get metrics
             dict_results_epoch, train_stats = get_all_metrics(stats, config, epoch, train_stats, trainloss, testloss, criterion, class_names, mus)

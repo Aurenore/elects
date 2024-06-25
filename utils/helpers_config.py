@@ -11,7 +11,6 @@ def set_up_config(config, print_comments:bool=False):
     
     Returns:
         config (argparse.Namespace): configuration
-        extra_padding_list (list): list of extra padding values. Only used if tempcnn is used, otherwise set to [0]
     """
     if not hasattr(config, "device"):
         config.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -37,14 +36,6 @@ def set_up_config(config, print_comments:bool=False):
         config.validation_set = "valid"
         if print_comments:
             print(f"validation_set set to {config.validation_set}")
-    if not hasattr(config, "left_padding"):
-        config.left_padding = False
-        if print_comments:
-            print(f"left_padding set to {config.left_padding}")
-    if not hasattr(config, "extra_padding_list"):
-        config.extra_padding_list = [0]
-        if print_comments:
-            print(f"extra_padding_list set to {config.extra_padding_list}")
     if not hasattr(config, "daily_timestamps"):
         config.daily_timestamps = False
         if print_comments:
@@ -61,13 +52,6 @@ def set_up_config(config, print_comments:bool=False):
         config.original_time_serie_lengths = None
         if print_comments:
             print(f"original_time_serie_lengths set to {config.original_time_serie_lengths}")
-    # only use extra padding if tempcnn
-    if config.backbonemodel == "LSTM":
-        extra_padding_list = [0]
-        if print_comments:
-            print(f"Since LSTM is used, extra padding is set to {extra_padding_list}")
-    else:
-        extra_padding_list = config.extra_padding_list
         
     if hasattr(config, "class_weights"):
         if isinstance(config.class_weights, list):  # Check if it's a list
@@ -76,7 +60,7 @@ def set_up_config(config, print_comments:bool=False):
         if print_comments:
             print(f"weights moved to device {config.device}")
     
-    return config, extra_padding_list
+    return config
 
 
 def save_config(model_path: str, run):

@@ -18,7 +18,6 @@ class TestMus():
             self.device = "cuda"
             self.epochs = 100
             self.epsilon = 10
-            self.extra_padding_list = [0]
             self.hidden_dims = 64
             self.learning_rate = 0.001
             self.loss_weight = "balanced"

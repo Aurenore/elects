@@ -27,7 +27,6 @@ class TestDailyRewardPiecewiseLinRegrLoss():
             self.device = "cuda"
             self.epochs = 100
             self.epsilon = 10
-            self.extra_padding_list = [0]
             self.hidden_dims = 64
             self.learning_rate = 0.001
             self.loss_weight = "balanced"
@@ -55,7 +54,7 @@ class TestDailyRewardPiecewiseLinRegrLoss():
         return self.Config()
     
     def test_update_alphas(self, config):
-        config, extra_padding_list = set_up_config(config)
+        config = set_up_config(config)
         nclasses, input_dim = 7, 13
         class_weights = torch.tensor(np.random.rand(nclasses))
         criterion, mus, mu = set_up_criterion(config, class_weights, nclasses, wandb_update=False)
@@ -73,7 +72,7 @@ class TestDailyRewardPiecewiseLinRegrLoss():
         assert torch.isclose(criterion.alphas.sum(), torch.tensor(1.)), f"Alphas should sum to 1, but sum is {criterion.alphas.sum()}."
         
     def test_update_alphas_during_training(self, config):
-        config, extra_padding_list = set_up_config(config)
+        config = set_up_config(config)
         nclasses, input_dim = 7, 13
         class_weights = torch.tensor(np.random.rand(nclasses))
         criterion, mus, mu = set_up_criterion(config, class_weights, nclasses, wandb_update=False)
@@ -93,9 +92,8 @@ class TestDailyRewardPiecewiseLinRegrLoss():
     def test_instantiation(self, config): 
         torch.autograd.set_detect_anomaly(True)
         config.update({"alpha": 0.9, "alpha_decay": [0.9, 0.6]})
-        config, extra_padding_list = set_up_config(config)
+        config = set_up_config(config)
         assert config is not None, "Config setup failed."
-        assert isinstance(extra_padding_list, list), "Extra padding list should be a list."
         
         traindataloader, testdataloader, train_ds, test_ds, nclasses, class_names, input_dim, length_sorted_doy_dict_test = load_dataset(config)
 
@@ -120,8 +118,8 @@ class TestDailyRewardPiecewiseLinRegrLoss():
                     
                     # train and test epoch
                     dict_args = {"epoch": epoch}
-                    trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, extra_padding_list=extra_padding_list, **dict_args)
-                    testloss, stats = run_test_epoch(model, testdataloader, criterion, config, extra_padding_list=extra_padding_list, return_id=test_ds.return_id, **dict_args)
+                    trainloss = train_epoch(model, traindataloader, optimizer, criterion, device=config.device, **dict_args)
+                    testloss, stats = run_test_epoch(model, testdataloader, criterion, config, return_id=test_ds.return_id, **dict_args)
                     assert isinstance(trainloss, (float, np.float32, np.float64)), "Train loss should be a float."
                     assert isinstance(testloss, (float, np.float32, np.float64)), "Test loss should be a float."
                     assert isinstance(stats, dict), "Stats should be a dictionary."

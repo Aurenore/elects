@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import torch.utils.data
 import os
 from torch.nn.modules.normalization import LayerNorm
-from models.backbone_models.TempCNN import TempCNN
 from models.model_helpers import get_backbone_model, get_t_stop_from_daily_timestamps
 from models.heads import ClassificationHead, DecisionHeadDay
 
@@ -33,8 +32,6 @@ class DailyEarlyRNN(nn.Module):
             self.start_decision_head_training = 0
 
     def forward(self, x, **kwargs):
-        if self.incremental_evaluation:
-            x = self.padding(x, **kwargs)
         x = self.intransforms(x)
         output_tupple = self.backbone(x)
         if type(output_tupple) == tuple:
@@ -72,10 +69,8 @@ class DailyEarlyRNN(nn.Module):
     def initialize_model(self, backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size=3):
         self.sequence_length = sequencelength
         self.backbone_model_name = backbone_model
-        if self.backbone_model_name == "TempCNN":
-            raise ValueError("TempCNN is not implemented for DailyEarlyRNN")
-        else: 
-            self.incremental_evaluation = False
+        if self.backbone_model_name != "LSTM":
+            raise ValueError("Only LSTM is implemented for DailyEarlyRNN")
         self.backbone = get_backbone_model(backbone_model, input_dim, hidden_dims, nclasses, num_rnn_layers, dropout, sequencelength, kernel_size)
         
 

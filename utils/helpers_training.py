@@ -60,12 +60,10 @@ def parse_args():
     parser.add_argument('--patience', type=int, default=30, help="Early stopping patience")
     parser.add_argument('--device', type=str, default="cuda", help="Compute device")
     parser.add_argument('--epochs', type=int, default=100, help="number of training epochs")
-    parser.add_argument('--extra-padding-list', type=int_list, default="0", help="extra padding for the TempCNN model")
     parser.add_argument('--hidden-dims', type=int, default=64, help="number of hidden dimensions in the backbone model")
     parser.add_argument('--batchsize', type=int, default=256, help="batch size")
     parser.add_argument('--dataroot', type=str, default="/home/amauron/elects/data/elects_data", help="root directory for dataset")
     parser.add_argument('--snapshot', type=str, default="/home/amauron/elects/data/elects_snapshots/model.pth", help="snapshot file path")
-    parser.add_argument('--left-padding', type=bool, default=False, help="left padding for TempCNN")
     parser.add_argument('--sequencelength', type=int, default=70, help="sequence length for time series")
     parser.add_argument('--loss', type=str, default="early_reward", help="daily_reward_lin_regr")
     parser.add_argument('--decision-head', type=str, default="day", help="decision head type")	
@@ -89,7 +87,7 @@ def parse_args():
 
     return args
 
-def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_list:list=[0], **kwargs):
+def train_epoch(model, dataloader, optimizer, criterion, device, **kwargs):
     """ Train the model for one epoch
     
     Args:
@@ -98,7 +96,6 @@ def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_l
         optimizer: the optimizer
         criterion: the loss function
         device: the device
-        extra_padding_list: list of extra padding values, default is [0]. 
         kwargs: additional keyword arguments, e.g. epoch
         
     Returns:
@@ -107,20 +104,19 @@ def train_epoch(model, dataloader, optimizer, criterion, device, extra_padding_l
     losses = []
     model.train()
     for batch in dataloader:
-        for extra_padding in extra_padding_list:
-            optimizer.zero_grad()
-            X, y_true = batch
-            X, y_true = X.to(device), y_true.to(device)
-            dict_padding = {"extra_padding": extra_padding, "epoch": kwargs.get("epoch", 0), "criterion_alpha": criterion.alpha}
-            log_class_probabilities, stopping_criteria = model(X, **dict_padding)
-            
-            loss = criterion(log_class_probabilities, stopping_criteria, y_true, **kwargs)
+        optimizer.zero_grad()
+        X, y_true = batch
+        X, y_true = X.to(device), y_true.to(device)
+        dict_model = {"epoch": kwargs.get("epoch", 0), "criterion_alpha": criterion.alpha}
+        log_class_probabilities, stopping_criteria = model(X, **dict_model)
+        
+        loss = criterion(log_class_probabilities, stopping_criteria, y_true, **kwargs)
 
-            if not loss.isnan().any():
-                loss.backward()
-                optimizer.step()
+        if not loss.isnan().any():
+            loss.backward()
+            optimizer.step()
 
-                losses.append(loss.cpu().detach().numpy())
+            losses.append(loss.cpu().detach().numpy())
 
     return np.stack(losses).mean()
 
@@ -185,7 +181,7 @@ def set_up_model(config, nclasses, input_dim, update_wandb: bool=True):
         dict_model = {"start_decision_head_training": config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0,}
         model = DailyEarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, day_head_init_bias=config.day_head_init_bias, **dict_model).to(config.device)
     else:
-        model = EarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims, left_padding=config.left_padding).to(config.device)
+        model = EarlyRNN(config.backbonemodel, nclasses=nclasses, input_dim=input_dim, sequencelength=config.sequencelength, hidden_dims=config.hidden_dims).to(config.device)
     if update_wandb:
         wandb.config.update({"nb_parameters": count_parameters(model)})
     return model
