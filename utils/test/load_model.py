@@ -6,7 +6,7 @@ import argparse
 import torch 
 from typing import Tuple
 from models.model_helpers import count_parameters
-from utils.helpers_training import set_up_criterion, set_up_model
+from utils.train.helpers_training import set_up_criterion, set_up_model
 from utils.helpers_config import set_up_config
 
 def clean_runs(runs_df: pd.DataFrame) -> pd.DataFrame:

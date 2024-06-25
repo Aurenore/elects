@@ -5,7 +5,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 from data import LABELS_NAMES
-from utils.helpers_testing import get_prob_t_stop
+from utils.test.helpers_testing import get_prob_t_stop
 import os
 from utils.plots import boxplot_stopping_times, plot_timestamps_left_per_class
 from utils.doy import get_doys_dict_test, get_doy_stop

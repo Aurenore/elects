@@ -7,7 +7,7 @@ import os
 os.environ['MPLCONFIGDIR'] = '/myhome'
 from utils.plots import plot_label_distribution_datasets
 from utils.helpers_config import set_up_config, save_config
-from utils.helpers_testing import get_test_stats_from_model, load_test_dataset, save_test_stats
+from utils.test.helpers_testing import get_test_stats_from_model, load_test_dataset, save_test_stats
 from utils.plots_test import plots_all_figs_at_test
 import matplotlib.pyplot as plt
 from utils.test.load_model import get_all_runs, get_loaded_model_and_criterion, get_model_and_model_path

@@ -4,7 +4,7 @@ import os
 #os.environ["WANDB_DIR"] = os.path.join(os.path.dirname(__file__), "..", "wandb")
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import wandb
-from utils.helpers_training import  parse_args
+from utils.train.helpers_training import  parse_args
 from utils.train.main import main_train
 
 if __name__ == '__main__':

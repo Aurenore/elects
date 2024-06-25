@@ -7,11 +7,11 @@ from tqdm import tqdm
 import pandas as pd
 import wandb
 from utils.helpers_mu import mus_should_be_updated, update_mus_during_training
-from utils.helpers_training import train_epoch, set_up_model, set_up_optimizer, set_up_class_weights, \
+from utils.train.helpers_training import train_epoch, set_up_model, set_up_optimizer, set_up_class_weights, \
     set_up_criterion, set_up_resume, get_all_metrics, update_patience, log_description, \
     plots_during_training, load_dataset, plot_label_distribution_in_training 
 from utils.helpers_config import set_up_config
-from utils.helpers_testing import test_epoch
+from utils.test.helpers_testing import test_epoch
 
 def main_train(config):
     # ----------------------------- CONFIGURATION -----------------------------
