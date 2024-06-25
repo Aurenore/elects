@@ -47,7 +47,7 @@ class DailyEarlyRNN(nn.Module):
         if epoch>=self.start_decision_head_training and alpha<1.-1e-8:        
             timestamps_left_before_predictions= self.stopping_decision_head(outputs)
         else:
-            timestamps_left_before_predictions = torch.ones((x.shape[0], x.shape[1]), device=x.device)*364
+            timestamps_left_before_predictions = torch.ones((x.shape[0], x.shape[1]), device=x.device)*self.sequence_length
 
         return log_class_probabilities, timestamps_left_before_predictions
 
