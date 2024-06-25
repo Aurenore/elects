@@ -127,7 +127,7 @@ def plot_all_doy_probs(stats, doys_dict, palette=PALETTE, nclasses=9, class_name
     return fig, axes
 
 
-def plot_confusion_matrix(y_true, y_pred, class_names, fig, ax):
+def plot_confusion_matrix(y_true, y_pred, class_names, fig, ax, normalize=None):
     """
     Plots a confusion matrix with the true labels on the x-axis and predicted labels on the y-axis.
     
@@ -137,13 +137,17 @@ def plot_confusion_matrix(y_true, y_pred, class_names, fig, ax):
     class_names (list): List of class names to be plotted on the x and y axis.
     fig (matplotlib.figure.Figure): The figure object.
     ax (matplotlib.axes.Axes): The axes object.
+    normalize (str): {'true', 'pred', 'all'}, default=None. Normalizes confusion matrix over the true (rows), predicted (columns) conditions or all the population. 
+                    If None, confusion matrix will not be normalized.
     
     Returns:
     matplotlib.figure.Figure: The figure object with the confusion matrix.
     """
     
     # Compute confusion matrix
-    conf_mat = confusion_matrix(y_true, y_pred)
+    if normalize not in {'true', 'pred', 'all', None}:
+        raise ValueError("normalize must be one of {'true', 'pred', 'all'}")
+    conf_mat = confusion_matrix(y_true, y_pred, normalize=normalize)
     
     # Plot the confusion matrix
     sns.heatmap(conf_mat.T, annot=True, cmap='Blues', ax=ax, xticklabels=class_names, yticklabels=class_names, fmt='d')
@@ -282,25 +286,35 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
         doys_dict_test = get_doys_dict_test(dataroot=os.path.join(args.dataroot,args.dataset))
         doys_stop = get_doy_stop(stats, doys_dict_test, approximated=False)
     fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names)
-                    
-    fig_boxplot.savefig(os.path.join(model_path, "boxplot_stopping_times.png"))
-    print("fig saved at ", os.path.join(model_path, "boxplot_stopping_times.png"))
+    fig_filename = os.path.join(model_path, "boxplot_stopping_times.png")
+    fig_boxplot.savefig(fig_filename)
+    print("fig saved at ", fig_filename)
 
     fig, ax = plt.subplots(figsize=(7,7))
     fig = plot_confusion_matrix(stats["targets"][:, 0], stats["predictions_at_t_stop"].flatten(), class_names, fig, ax)
-    fig.savefig(os.path.join(model_path, "confusion_matrix.png"))
-    print("fig saved at ", os.path.join(model_path, "confusion_matrix.png"))
+    fig_filename = os.path.join(model_path, "confusion_matrix.png")
+    fig.savefig(fig_filename)
+    print("fig saved at ", fig_filename)
+    
+    # normalized matrix 
+    fig_normalized, ax_normalized = plt.subplots(figsize=(7,7))
+    fig_normalized = plot_confusion_matrix(stats["targets"][:, 0], stats["predictions_at_t_stop"].flatten(), class_names, fig_normalized, ax_normalized, normalize='true')
+    fig_filename = os.path.join(model_path, "confusion_matrix_normalized.png")
+    fig_normalized.savefig(fig_filename)
+    print("fig saved at ", fig_filename)
 
     if "lin_regr" in run_config.loss:
         fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
         fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus, ylim=sequencelength_test, epoch=run_config.epochs)
-        fig_timestamps.savefig(os.path.join(model_path, "timestamps_left_per_class.png"))
-        print("fig saved at ", os.path.join(model_path, "timestamps_left_per_class.png"))
+        fig_filename = os.path.join(model_path, "timestamps_left_per_class.png")
+        fig_timestamps.savefig(fig_filename)
+        print("fig saved at ", fig_filename)
             
         fig_prob_class, axes_prob_class = plt.subplots(figsize=(15, 7*len(class_names)), nrows=len(class_names), sharex=True)
         fig_prob_class, _ = plot_fig_class_prob_wrt_time_with_mus(fig_prob_class, axes_prob_class, \
                 stats["class_probabilities"], stats["targets"][:, 0], class_names, mus, run_config.p_thresh, \
                 alpha=0.1, epoch=run_config.epochs)   
-        fig_prob_class.savefig(os.path.join(model_path, "class_probabilities_wrt_time.png"))
-        print("fig saved at ", os.path.join(model_path, "class_probabilities_wrt_time.png"))
+        fig_filename = os.path.join(model_path, "class_probabilities_wrt_time_with_mus.png")
+        fig_prob_class.savefig(fig_filename)
+        print("fig saved at ", fig_filename)
     return
