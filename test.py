@@ -36,7 +36,7 @@ def main(run_name, sequencelength_test):
     for key, value in run.config.items():
         print(f"{key}: {value}")
 
-    args, _ = set_up_config(run_config)
+    args  = set_up_config(run_config)
     args.dataroot = local_dataroot
 
     # ----------------------------- LOAD DATASET -----------------------------

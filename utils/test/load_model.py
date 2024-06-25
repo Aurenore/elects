@@ -9,6 +9,19 @@ from models.model_helpers import count_parameters
 from utils.helpers_training import set_up_criterion, set_up_model
 from utils.helpers_config import set_up_config
 
+def clean_runs(runs_df: pd.DataFrame) -> pd.DataFrame:
+    """ Clean the runs dataframe by removing the runs with: 
+        - config.backbonemodel == "TempCNN"
+    
+    Args:
+        runs_df (pd.DataFrame): dataframe with the summary, config, name, sweep, start_date of each run
+    
+    Returns:
+        runs_df (pd.DataFrame): cleaned dataframe
+    """
+    runs_df = runs_df[~runs_df.config.apply(lambda x: x.get("backbonemodel", None) == "TempCNN")]
+    return runs_df
+    
 
 def get_all_runs(entity: str, project: str) -> Tuple[pd.DataFrame, list]:
     """ Get all the runs of a project from wandb.
@@ -49,6 +62,7 @@ def get_all_runs(entity: str, project: str) -> Tuple[pd.DataFrame, list]:
     runs_df = pd.DataFrame(
         {"summary": summary_list, "config": config_list, "name": name_list, "sweep": sweep_list, "start_date": start_date_list}
     )
+    runs_df = clean_runs(runs_df)
     return runs_df, runs
 
 
@@ -140,7 +154,7 @@ def get_loaded_model_and_criterion(run: wandb.apis.public.runs.Run, nclasses: in
     """
     model_artifact, model_path = get_model_and_model_path(run)
     run_config = argparse.Namespace(**run.config)
-    run_config, _ = set_up_config(run_config)
+    run_config = set_up_config(run_config)
     if hasattr(run_config, "class_weights") and run_config.class_weights is not None:
         class_weights = torch.tensor(run_config.class_weights)
     else:

@@ -12,7 +12,7 @@ class TestLoadModel():
         entity, project = "aurenore", "MasterThesis"
         runs_df, runs = get_all_runs(entity, project)
         assert len(runs_df) > 0 
-        assert len(runs_df) == len(runs)
+        assert len(runs_df) <= len(runs)
         assert runs_df.columns.tolist() == ["summary", "config", "name", "sweep", "start_date"]
         assert all([isinstance(run, wandb.apis.public.Run) for run in runs])
         assert all([isinstance(name, str) for name in runs_df.name])
@@ -20,6 +20,7 @@ class TestLoadModel():
         assert all([isinstance(name, str) for name in runs_df.name])
         assert all([isinstance(sweep, str) or sweep is None for sweep in runs_df.sweep])
         assert all([isinstance(start_date, str) for start_date in runs_df.start_date])
+        assert all([config.get("backbonemodel", None) != "TempCNN" for config in runs_df.config])
         
     def test_get_best_run(self):
         entity, project = "aurenore", "MasterThesis"
@@ -30,7 +31,8 @@ class TestLoadModel():
         assert isinstance(chosen_run.name, str)
         assert isinstance(chosen_run.summary._json_dict[metric], float)
         # check that indeed the chosen run has the highest value of the metric
-        max_metric_value = max([run.summary._json_dict.get(metric, float('-inf')) for run in runs])
+        runs_lstm = [run for run in runs if run.config.get("backbonemodel", None) != "TempCNN"]
+        max_metric_value = max([run.summary._json_dict.get(metric, float('-inf')) for run in runs_lstm])
         if max_metric_value != float('-inf'):  # Ensure there is at least one valid metric value
             assert chosen_run.summary._json_dict.get(metric, float('-inf')) == max_metric_value
         else:
