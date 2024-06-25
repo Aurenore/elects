@@ -99,7 +99,7 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
         
         """
         if self.factor == "v1":
-            factor = (1.-t/T)*(timestamps_left.float()/T)*(-1.)
+            factor = (1.-t/T)*(timestamps_left.float()/T)
         elif self.factor == "v2":
             factor = (t + timestamps_left.float())/T
         else: 
