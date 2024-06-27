@@ -7,7 +7,7 @@ from sklearn.metrics import confusion_matrix
 from data import LABELS_NAMES
 from utils.test.helpers_testing import get_prob_t_stop
 import os
-from utils.plots import boxplot_stopping_times, plot_timestamps_left_per_class
+from utils.plots import boxplot_stopping_times, plot_timestamps_left_per_class, create_figure_and_axes
 from utils.doy import get_doys_dict_test, get_doy_stop
 
 PALETTE=sns.color_palette("colorblind")
@@ -186,32 +186,39 @@ def plot_probability_stopping(stats, index, ax):
     return ax
 
 
-def plot_class_prob_wrt_time(fig, ax, label, class_prob, y_true, class_names, alpha=0.2):
+def plot_class_prob_wrt_time(fig, ax, label, class_prob, y_true, class_names, alpha=0.2, add_legend=True):
     # for this label, compute the mean probability and the std through time 
     mean_prob = class_prob[y_true == label].mean(axis=0)
     std_prob = class_prob[y_true == label].std(axis=0)
     # Loop through each dimension to plot separately
     for i in range(mean_prob.shape[1]):
         current_label = class_names[i]
-        if i==label:
-            current_label = f"{current_label} (true)"
-        ax.plot(mean_prob[:, i], label=f"mean {current_label}")
+        if add_legend:
+            label_mean = f"mean {current_label}"
+            label_std = f"std {current_label}"
+        else: 
+            label_mean = None
+            label_std = None
+        ax.plot(mean_prob[:, i], label=label_mean)
         ax.fill_between(range(mean_prob.shape[0]), 
                         mean_prob[:, i] - std_prob[:, i], 
                         mean_prob[:, i] + std_prob[:, i], 
-                        alpha=alpha, label=f"std {current_label}")
+                        alpha=alpha, label=label_std)
     ax.set_ylim(0, 1)
     ax.set_title(f"{class_names[label]} class probability")
     ax.set_xlabel("Time (day)")
     ax.set_ylabel("Probability")
-    ax.legend()
     ax.grid()
     return fig, ax
 
 
 def plot_fig_class_prob_wrt_time(fig, axes, class_prob, y_true, class_names, alpha=0.2):
     for label in range(len(class_names)):
-        plot_class_prob_wrt_time(fig, axes[label], label, class_prob, y_true, class_names, alpha)
+        if label == len(class_names)-1:
+            add_legend = True
+        else: 
+            add_legend = False
+        plot_class_prob_wrt_time(fig, axes[label], label, class_prob, y_true, class_names, alpha, add_legend)
     fig.suptitle("Class probabilities through time", fontsize=16, y=1.)
     fig.tight_layout()
     return fig, axes
@@ -248,18 +255,26 @@ def plot_fig_class_prob_wrt_time_one_sample(fig, axes, class_prob, y_true, class
 
 def plot_fig_class_prob_wrt_time_with_mus(fig, axes, class_prob, y_true, class_names, mus, p_thresh, alpha=0.2, epoch=None):
     fig, axes = plot_fig_class_prob_wrt_time(fig, axes, class_prob, y_true, class_names, alpha)
-    # for each ax i, plot a vertical line at mu_i and a horizontal line at p_tresh
-    for label in range(len(class_names)):
-        axes[label].axvline(mus[label], color="red", linestyle="--")
-        axes[label].axhline(p_thresh, color="black", linestyle="--") # Add labels for mus[label] and p_thresh
-        # Place text for mus[label] at the top of the axes (change 'top' to 'bottom' if you prefer it at the bottom)
-        axes[label].text(mus[label], axes[label].get_ylim()[1], f'$\mu = {mus[label]}$', va='top', ha='right', color='red')
-        # Place text for p_thresh at the far right of the axes (change 'right' to 'left' if you prefer it on the left side)
-        axes[label].text(axes[label].get_xlim()[1], p_thresh, f'$p_{{thresh}} = {p_thresh}$', va='bottom', ha='right', color='black')
-        
+    if mus is not None:
+        # for each ax i, plot a vertical line at mu_i and a horizontal line at p_tresh
+        for label in range(len(class_names)):
+            if len(mus)>label:
+                axes[label].axvline(mus[label], color="red", linestyle="--")
+                axes[label].axhline(p_thresh, color="black", linestyle="--") # Add labels for mus[label] and p_thresh
+                # Place text for mus[label] at the top of the axes (change 'top' to 'bottom' if you prefer it at the bottom)
+                axes[label].text(mus[label], axes[label].get_ylim()[1], f'$\mu = {mus[label]}$', va='top', ha='right', color='red')
+                # Place text for p_thresh at the far right of the axes (change 'right' to 'left' if you prefer it on the left side)
+                axes[label].text(axes[label].get_xlim()[1], p_thresh, f'$p_{{thresh}} = {p_thresh}$', va='bottom', ha='right', color='black')
+            else: 
+                print("mus is not defined for label", label)
     # Add text for the epoch number at the top right corner of the figure
     if epoch is not None:
         fig.text(0.99, 0.99, f"Epoch {epoch}", transform=fig.transFigure, ha='right', va='top')
+    # legend in lower right corner
+    n_rows = (len(class_names) + 1) // 2  # +1 ensures that there is an extra row if an odd number of classes
+    legend_ax_index = n_rows * 2 - 1
+    if len(axes) > legend_ax_index:
+        fig.legend(loc='center', bbox_to_anchor=axes[legend_ax_index].get_position().bounds, fancybox=True, ncol=2)
     fig.suptitle("Class probabilities through time", fontsize=16, y=1.)
     fig.tight_layout()
     return fig, axes
@@ -310,14 +325,17 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
     fig_normalized.savefig(fig_filename)
     print("fig saved at ", fig_filename)
 
-    if "lin_regr" in run_config.loss:
+    if "lin_regr" in run_config.loss or run_config.loss == "daily_reward":
         fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
         fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus, ylim=sequencelength_test, epoch=run_config.epochs)
         fig_filename = os.path.join(model_path, "timestamps_left_per_class.png")
         fig_timestamps.savefig(fig_filename)
         print("fig saved at ", fig_filename)
             
-        fig_prob_class, axes_prob_class = plt.subplots(figsize=(15, 7*len(class_names)), nrows=len(class_names), sharex=True)
+        fig_prob_class, axes_prob_class = create_figure_and_axes(nclasses, n_cols=2)
+        # check that run_cconfig has p_thresh as attribute 
+        if not hasattr(run_config, "p_thresh"):
+            run_config.p_thresh = None
         fig_prob_class, _ = plot_fig_class_prob_wrt_time_with_mus(fig_prob_class, axes_prob_class, \
                 stats["class_probabilities"], stats["targets"][:, 0], class_names, mus, run_config.p_thresh, \
                 alpha=0.1, epoch=run_config.epochs)   

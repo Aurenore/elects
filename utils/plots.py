@@ -9,6 +9,15 @@ PALETTE=sns.color_palette("colorblind")
 SPECTRAL_BANDS = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B10', 'B11', 'B12',
                'QA10', 'QA20', 'QA60', 'doa']
 
+def create_figure_and_axes(n_classes, n_cols=2):
+    # Compute the number of rows needed for n_cols columns
+    n_rows = (n_classes + n_cols - 1) // n_cols  # This ensures you have enough rows
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, n_rows * 3), sharex=True)  # Adjust figsize as necessary
+    # if there are more axes than classes, trim the excess axes
+    if n_classes < n_rows * n_cols:
+        axes[n_rows-1, -1].axis('off')  # Hide the last axis if it's not needed
+    axes = axes.flatten()# [:n_classes]  # Flatten the axes array and trim excess axes if any
+    return fig, axes
 
 def extract_labels(dataset: Dataset):
     """
@@ -136,11 +145,11 @@ def plot_timestamps_left_per_class(fig, ax, stats, nclasses, class_names, mus, y
         label_str = class_names[label] + " "
         fig, ax = plot_timestamps_left(timestamps_left_label, ax, fig, label_str)
         color_label = plt.gca().lines[-1].get_color()
-        ax.axvline(mus[label], linestyle="--", color=color_label)
-        ax.text(mus[label], ylim-2-space_between_labels*label, label_str, va='top', ha='right', color=color_label)
+        if mus is not None:
+            ax.axvline(mus[label], linestyle="--", color=color_label)
+            ax.text(mus[label], ylim-2-space_between_labels*label, label_str, va='top', ha='right', color=color_label)
     if epoch is not None:
         fig.text(0.99, 0.99, f"Epoch {epoch}", transform=fig.transFigure, ha='right', va='top')
-
     ax.set_ylim(0, ylim)
     fig.tight_layout()
     return fig, ax

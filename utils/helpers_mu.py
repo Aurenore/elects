@@ -64,5 +64,9 @@ def update_mus_during_training(config, criterion, stats, epoch, mus, mu_default)
 
 
 def get_mus_from_config(run_config):
-    return torch.tensor(run_config.mus)
+    # return the mus from the run_config, if they are defined. otherwise return none
+    if hasattr(run_config, "mus") and run_config.mus is not None:
+        return torch.tensor(run_config.mus)
+    else: 
+        return None
     

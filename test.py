@@ -15,7 +15,7 @@ from utils.helpers_mu import get_mus_from_config
 from utils.results_analysis.extract_video import download_images, add_files_to_images, save_video
 import argparse
 
-def main(run_name, sequencelength_test):
+def main(run_name, sequencelength_test, plot_label_distribution=False):
     print(f"Test the model from run '{run_name}' on the test dataset")
     local_dataroot = os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")
     print("Local dataroot: ", local_dataroot)
@@ -43,10 +43,11 @@ def main(run_name, sequencelength_test):
     test_ds, nclasses, class_names, input_dim = load_test_dataset(args, sequencelength_test)
 
     # ----------------------------- VISUALIZATION: label distribution -----------------------------
-    datasets = [test_ds]
-    sets_labels = ["Test"]
-    fig, ax = plt.subplots(figsize=(15, 7))
-    fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
+    if plot_label_distribution:
+        datasets = [test_ds]
+        sets_labels = ["Test"]
+        fig, ax = plt.subplots(figsize=(15, 7))
+        fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
 
     # ## Load the models and the criterions
     mus = get_mus_from_config(run_config)
@@ -73,8 +74,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-name", type=str, help="name of the run to test")
     parser.add_argument("--sequencelength-test", type=int, help="sequence length of the test dataset", default=None)
+    parser.add_argument("--plot-label-distribution", type=bool, help="plot the label distribution", default=False)
     args = parser.parse_args()
     run_name = args.run_name
     sequencelength_test = args.sequencelength_test
-    main(run_name, sequencelength_test)
+    plot_label_distribution = args.plot_label_distribution
+    main(run_name, sequencelength_test, plot_label_distribution)
     print("Done.")

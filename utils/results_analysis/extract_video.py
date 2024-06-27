@@ -32,22 +32,24 @@ def add_files_to_images(local_path, name_image):
     """
     folder_path = os.path.join(local_path, "media", "images") # format from wandb
     images = []
-    images_paths = []
-    for file in sorted(os.listdir(folder_path)):
-        if file.endswith('.png') and file.startswith(name_image):
-            file_path = os.path.join(folder_path, file)
-            images_paths.append(file_path)
-            
-    # sort the images paths by the number after "class_probabilities_wrt_time_"
-    images_paths = sorted(images_paths, key=lambda x: int(x.split(name_image)[1].split("_")[1]))
-    
-    for file_path in images_paths:
-        image = imageio.imread(file_path)
-        if image.ndim == 3:  # Check if image is a color image (H x W x C)
-            images.append(image)
-        else:
-            print(f"Error loading {file_path}: Image is not in expected format.")
-            
+    if os.path.exists(folder_path):
+        images_paths = []
+        for file in sorted(os.listdir(folder_path)):
+            if file.endswith('.png') and file.startswith(name_image):
+                file_path = os.path.join(folder_path, file)
+                images_paths.append(file_path)
+                
+        # sort the images paths by the number after "class_probabilities_wrt_time_"
+        images_paths = sorted(images_paths, key=lambda x: int(x.split(name_image)[1].split("_")[1]))
+        
+        for file_path in images_paths:
+            image = imageio.imread(file_path)
+            if image.ndim == 3:  # Check if image is a color image (H x W x C)
+                images.append(image)
+            else:
+                print(f"Error loading {file_path}: Image is not in expected format.")
+    else: 
+        print(f"Folder {folder_path} does not exist. No images added.")
     return images, folder_path
 
 
@@ -63,16 +65,20 @@ def save_video(images_directory, images, output_filename='class_probability_wrt_
     """
     if not output_filename.endswith('.mp4'):
         raise ValueError("output_filename should end with .mp4")
-    writer = imageio.get_writer(os.path.join(images_directory, output_filename), fps=2, codec='libx264') 
-    count = 0 
-    for image in images:
-        if image is not None:
-            writer.append_data(image)
-            count += 1
-        else:
-            print(f"Failed to read image.")
-    writer.close()
-    print(f"{count} images added to the video.")
-    video_path = os.path.join(images_directory, output_filename)
-    print(f"Video saved at {video_path}")
+    if os.path.exists(os.path.join(images_directory)):
+        writer = imageio.get_writer(os.path.join(images_directory, output_filename), fps=2, codec='libx264') 
+        count = 0 
+        for image in images:
+            if image is not None:
+                writer.append_data(image)
+                count += 1
+            else:
+                print(f"Failed to read image.")
+        writer.close()
+        print(f"{count} images added to the video.")
+        video_path = os.path.join(images_directory, output_filename)
+        print(f"Video saved at {video_path}")
+    else: 
+        video_path = None
+        print(f"Folder {images_directory} does not exist. No video saved.")
     return video_path
