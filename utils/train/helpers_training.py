@@ -20,7 +20,7 @@ from utils.losses.daily_reward_loss import DailyRewardLoss
 from utils.losses.daily_reward_lin_regr_loss import DailyRewardLinRegrLoss, MU_DEFAULT, NB_DAYS_IN_YEAR
 import sklearn.metrics
 from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times, plot_timestamps_left, \
-    plot_timestamps_left_per_class
+    plot_timestamps_left_per_class, create_figure_and_axes
 from utils.plots_test import plot_fig_class_prob_wrt_time_with_mus
 from utils.doy import get_doys_dict_test, get_doy_stop, create_sorted_doys_dict_test, get_approximated_doys_dict
 from utils.metrics import harmonic_mean_score, get_std_score
@@ -481,7 +481,7 @@ def plots_during_training(epoch, stats, config, dict_results_epoch, class_names,
             dict_results_epoch["timestamps_left_plot"] = wandb.Image(fig_timestamps)
             plt.close(fig_timestamps)
     
-            fig_prob_class, axes_prob_class = plt.subplots(figsize=(15, 7*len(class_names)), nrows=len(class_names), sharex=True)
+            fig_prob_class, axes_prob_class = create_figure_and_axes(nclasses, n_cols=2)
             fig_prob_class, _ = plot_fig_class_prob_wrt_time_with_mus(fig_prob_class, axes_prob_class, \
                     stats["class_probabilities"], stats["targets"][:, 0], class_names, mus, config.p_thresh, \
                     alpha=0.1, epoch=epoch)    
