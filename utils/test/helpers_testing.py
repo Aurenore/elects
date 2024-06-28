@@ -116,8 +116,11 @@ def load_test_dataset(args, sequencelength_test=150):
     if args.dataset == "breizhcrops":
         dataroot = os.path.join(args.dataroot,"breizhcrops")
         input_dim = 13
+        if not hasattr(args, "preload_ram"):
+            args.preload_ram = True
         test_ds = BreizhCrops(root=dataroot, partition="eval", sequencelength=sequencelength_test, corrected=args.corrected, \
-            daily_timestamps=args.daily_timestamps, original_time_serie_lengths=args.original_time_serie_lengths, return_id=True)
+            daily_timestamps=args.daily_timestamps, original_time_serie_lengths=args.original_time_serie_lengths, \
+            return_id=True, preload_ram=args.preload_ram)
         nclasses = test_ds.nclasses
         class_names = test_ds.labels_names
         print("class names:", class_names)

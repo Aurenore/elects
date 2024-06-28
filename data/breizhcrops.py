@@ -18,7 +18,7 @@ APPROXIMATED_DOY_102 = [2, 5, 12, 15, 25, 32, 35, 42, 45, 52, 55, 62, 65, 72, 75
                         332, 335, 340, 342, 345, 347, 350, 352, 355, 357, 360, 362]
 
 class BreizhCrops(Dataset):
-    def __init__(self, partition="train", root="breizhcrops_dataset", sequencelength=70, year=2017, return_id=False, corrected=False, daily_timestamps=False, original_time_serie_lengths=[51, 102]):
+    def __init__(self, partition="train", root="breizhcrops_dataset", sequencelength=70, year=2017, return_id=False, corrected=False, daily_timestamps=False, original_time_serie_lengths=[51, 102], preload_ram=True):
         """
         BreizhCrops dataset 
         INPUT: 
@@ -33,28 +33,30 @@ class BreizhCrops(Dataset):
         assert partition in ["train", "valid", "eval"]
         if not corrected:
             if partition == "train":
-                frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
-                frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
                 self.ds = torch.utils.data.ConcatDataset([frh01, frh02])
                 self.labels_names = frh01.labels_names
             elif partition == "valid":
-                self.ds = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                self.ds = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
                 self.labels_names = self.ds.labels_names
             elif partition == "eval":
-                self.ds = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                self.ds = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
                 self.labels_names = self.ds.labels_names
         else:
             # because of the corrected flag, we need to load the datasets differently for the sizes to be reasonable
             if partition == "train":
-                self.ds = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                self.ds = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
                 self.labels_names = self.ds.labels_names
             elif partition == "valid":
-                self.ds = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                self.ds = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
                 self.labels_names = self.ds.labels_names
             elif partition == "eval":
-                frh03 = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
-                frh04 = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                frh03 = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                frh04 = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
                 self.ds = torch.utils.data.ConcatDataset([frh03, frh04])
+                self.ds_1 = frh03
+                self.ds_2 = frh04
                 self.labels_names = frh03.labels_names
 
         self.corrected = corrected
