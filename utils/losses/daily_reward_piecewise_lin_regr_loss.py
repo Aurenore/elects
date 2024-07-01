@@ -36,6 +36,8 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
                 self.percentages_other_alphas = kwargs["percentages_other_alphas"]
         else: 
             self.percentages_other_alphas = sample_three_uniform_numbers()
+        if not isinstance(self.percentages_other_alphas, torch.Tensor):
+            self.percentages_other_alphas = torch.tensor(self.percentages_other_alphas, device=self.weight.device)
         self.alphas = self.update_alphas(self.alpha, weight.device)
         
     def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False, **kwargs):
