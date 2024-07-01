@@ -1,19 +1,23 @@
 import datetime
 import torch
 import seaborn 
+import numpy as np 
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.patches import PathPatch
+from matplotlib.colors import ListedColormap
 from sklearn.metrics import confusion_matrix, accuracy_score
 from data import LABELS_NAMES
 from utils.test.helpers_testing import get_prob_t_stop
 import os
 from utils.plots import boxplot_stopping_times, plot_timestamps_left_per_class, create_figure_and_axes
 from utils.doy import get_doys_dict_test, get_doy_stop
+import warnings
 
 PALETTE=sns.color_palette("colorblind")
-
-import numpy as np 
-
+grosseille = "#b51f1f"
+acier = "#4F8FCC"
+newcmp = ListedColormap([acier, grosseille])
 
 def add_doys_lines(ax, dates_of_interest:list=["2017-05-01", "2017-06-01","2017-07-01","2017-08-01","2017-09-01"], ymax=1.1, ymin=0.):
     doys_of_interest = [datetime.datetime.strptime(d,"%Y-%m-%d").timetuple().tm_yday for d in dates_of_interest]
@@ -343,3 +347,66 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
         fig_prob_class.savefig(fig_filename)
         print("fig saved at ", fig_filename)
     return
+
+def boxplot_stopping_times_and_correctness(doy_stop, stats, fig, ax, labels_names=LABELS_NAMES, colors=PALETTE, epoch=None):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=FutureWarning)
+        doys_months = [datetime.datetime(2017,m,1).timetuple().tm_yday for m in range(1,13)]
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        
+        stats["correct_targets"] = stats["targets"][:,0].astype(float)
+        for target_i in range(len(labels_names)):
+            # for the target_i class, if the correct target should have been target_i but is not, set the value to target_i+0.5
+            stats["correct_targets"][(stats["targets"][:,0] == target_i) & (stats['predictions_at_t_stop'][:, 0] != target_i)] = target_i + 0.5
+            
+        colors = colors[:len(labels_names)]
+        new_palette = [colors[i//2] for i in range(2*len(labels_names))]
+        sns.boxplot(x=doy_stop,y=stats['correct_targets'],orient="h",ax=ax,showfliers=False, palette=new_palette)
+        ax.set_yticks(range(2*len(labels_names)))
+        ylabels = []
+        for label in labels_names: 
+            ylabels.append(label)
+            ylabels.append("wrong "+label)
+        ax.set_yticklabels(ylabels, fontsize=16)
+        ax.set_xlabel("day of year", fontsize=16)
+
+        ax.xaxis.grid(True)
+        ax.set_xticks(doys_months)
+        ax.set_xticklabels(months, ha="left")
+
+        sns.despine(left=True)
+        # if epoch is not None, write the epoch number on the plot at the top right corner
+        if epoch is not None:
+            ax.text(0.99, 0.99, f"Epoch {epoch}", transform=ax.transAxes, ha='right', va='top', fontsize=16)
+        fig.tight_layout()
+        
+    ax = add_color_correctness_boxplot(ax, newcmp=newcmp)
+    return fig, ax
+
+def add_color_correctness_boxplot(ax_boxplot, newcmp=newcmp):
+    box_patches = [patch for patch in ax_boxplot.patches if type(patch) == PathPatch]
+    if len(box_patches) == 0:  # in matplotlib older than 3.5, the boxes are stored in ax_boxplot.artists
+        box_patches = ax_boxplot.artists
+    num_patches = len(box_patches)
+    lines_per_boxplot = len(ax_boxplot.lines) // num_patches
+    for i, patch in enumerate(box_patches):
+        # create two colors: green and red for the correct and wrong predictions
+        col = newcmp(i % 2)
+        # Set the linecolor on the patch to the facecolor, and set the facecolor to None
+        #col = patch.get_facecolor()
+        patch.set_edgecolor(col)
+        # patch.set_facecolor('None')
+
+        # Each box has associated Line2D objects (to make the whiskers, fliers, etc.)
+        # Loop over them here, and use the same color as above
+        for line in ax_boxplot.lines[i * lines_per_boxplot: (i + 1) * lines_per_boxplot]:
+            line.set_color(col)
+            line.set_mfc(col)  # facecolor of fliers
+            line.set_mec(col)  # edgecolor of fliers
+            
+    # add legend for the newcmp colormap: correct and wrong predictions
+    ax_boxplot.legend(handles=[plt.Line2D([0], [0], color=newcmp(0), lw=4, label='correct'),
+                              plt.Line2D([0], [0], color=newcmp(1), lw=4, label='wrong')],
+                       title="Prediction Correctness", loc='upper right', fontsize=16)
+            
+    return ax_boxplot

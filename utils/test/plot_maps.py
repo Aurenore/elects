@@ -7,11 +7,11 @@ from PIL import Image
 from plots import PALETTE
 
 canard = "#007480"
-grosseile = "#b51f1f"
+grosseille = "#b51f1f"
 rouge = "#FF0000"
 leman = "#00A79F"
 acier = "#4F8FCC"
-newcmp = ListedColormap([grosseile, acier])
+newcmp = ListedColormap([grosseille, acier])
 classes_cmap = LinearSegmentedColormap.from_list("classes_cmap", PALETTE, N=len(PALETTE))
 classes_cmap = ListedColormap(["#3274A1", "#E1812C", "#3A913A", "#C03D3E", "#886BA3", "#845B53", "#D584BD", "#7F7F7F", "#A9AA35"])
 VMIN = 0
