@@ -315,6 +315,13 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
     fig_filename = os.path.join(model_path, "boxplot_stopping_times.png")
     fig_boxplot.savefig(fig_filename)
     print("fig saved at ", fig_filename)
+    
+    # boxplot with correctness
+    fig_boxplot_correctness, ax_boxplot_correctness = plt.subplots(figsize=(15, 7))
+    fig_boxplot_correctness, _ = boxplot_stopping_times_and_correctness(doys_stop, stats, fig_boxplot_correctness, ax_boxplot_correctness, class_names)
+    fig_filename = os.path.join(model_path, "boxplot_stopping_times_and_correctness.png")
+    fig_boxplot_correctness.savefig(fig_filename)
+    print("fig saved at ", fig_filename)
 
     fig, ax = plt.subplots(figsize=(7,7))
     fig = plot_confusion_matrix(stats["targets"][:, 0], stats["predictions_at_t_stop"].flatten(), class_names, fig, ax)
