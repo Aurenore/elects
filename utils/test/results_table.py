@@ -57,6 +57,20 @@ def create_results_table(run_names, runs_df, runs, local_dataroot, metrics_to_ke
     return results_table
 
 
+def create_results_table_end_of_training(run_names, runs_df, runs, metrics_to_keep = ["accuracy", "elects_earliness", "harmonic_mean", "std_score"]):
+    results_table = dict()
+    for run_name in run_names:
+        run_idx = runs_df[runs_df.name == run_name].index[0]
+        run = runs[run_idx]
+        results_run = dict()
+        for metric in metrics_to_keep:
+            results_run[metric] = run.summary[metric]
+        factor = run.config["factor"]
+        results_run["Wrong pred. penalty"] = factor
+        results_table[run_name] = results_run
+    return results_table
+
+
 def get_latex_table(results_table, new_columns = ["Wrong pred. penalty", "Accuracy", "Earliness", "Harmonic Mean", "STD score"]):
     df = pd.DataFrame(results_table).T
     # move the column "Wrong pred. penalty" as the first column 
@@ -65,5 +79,7 @@ def get_latex_table(results_table, new_columns = ["Wrong pred. penalty", "Accura
     df = df.rename(columns=dict(zip(df.columns, new_columns)))
     # change content of the table to 2 decimal places if it is a flaot 
     df = df.map(lambda x: str.format("{:0_.2f}", x) if isinstance(x, float) else x)
+    # sort the table alphabetically with the "Wrong pred. penalty" column
+    df = df.sort_values(by="Wrong pred. penalty")
     latex_table = df.to_latex(index=False)
     return latex_table
