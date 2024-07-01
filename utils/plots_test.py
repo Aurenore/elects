@@ -3,7 +3,7 @@ import torch
 import seaborn 
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, accuracy_score
 from data import LABELS_NAMES
 from utils.test.helpers_testing import get_prob_t_stop
 import os
@@ -166,7 +166,7 @@ def plot_confusion_matrix(y_true, y_pred, class_names, fig, ax, normalize=None):
     ax.yaxis.set_ticklabels(class_names, rotation=45)
 
     # Compute the accuracy of the model 
-    accuracy = np.trace(conf_mat) / float(np.sum(conf_mat))
+    accuracy = accuracy_score(y_true, y_pred)
     fig.suptitle(f"Overall accuracy {100*accuracy:.1f}%", fontsize=16)
     fig.tight_layout()
     

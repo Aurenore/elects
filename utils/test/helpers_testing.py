@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
 import torch
 import numpy as np
-from utils.metrics import harmonic_mean_score
+from utils.metrics import harmonic_mean_score, get_std_score
 import sklearn.metrics
 from utils.helpers_config import set_up_config
 from data import BreizhCrops
@@ -66,7 +66,7 @@ def test_dataset(model, test_ds, criterion, config, **kwargs):
     return loss, stats
 
 
-def get_test_stats(stats, testloss, args):
+def get_test_stats(stats, testloss, args, nclasses):
     precision, recall, fscore, support = sklearn.metrics.precision_recall_fscore_support(
         y_pred=stats["predictions_at_t_stop"][:, 0], y_true=stats["targets"][:, 0], average="macro",
         zero_division=0)
@@ -79,6 +79,7 @@ def get_test_stats(stats, testloss, args):
     earliness_reward = stats["earliness_reward"].mean()
     earliness = 1 - (stats["t_stop"].mean() / (args.sequencelength - 1))
     harmonic_mean = harmonic_mean_score(accuracy, earliness)
+    std_score = get_std_score(stats, nclasses)
     test_stats = {
         "test_loss": testloss,
         "accuracy": accuracy,
@@ -90,6 +91,7 @@ def get_test_stats(stats, testloss, args):
         "classification_loss": classification_loss,
         "earliness_reward": earliness_reward,
         "harmonic_mean": harmonic_mean,
+        "std_score": std_score,
     }
     return test_stats
 
@@ -108,7 +110,8 @@ def get_test_stats_from_model(model, test_ds, criterion, config):
     args = set_up_config(config, print_comments=True)
     kwargs={"epoch": args.epochs, "criterion_alpha": args.alpha_decay[1]}
     testloss, stats = test_dataset(model, test_ds, criterion, args, **kwargs)
-    test_stats = get_test_stats(stats, testloss, args)
+    nclasses = test_ds.nclasses
+    test_stats = get_test_stats(stats, testloss, args, nclasses)
     return test_stats, stats
 
 
@@ -142,5 +145,11 @@ def save_test_stats(model_path, test_stats):
         json.dump(test_stats, f, cls=NumpyEncoder)
     print("test_stats saved at ", test_stats_path)
     return test_stats_path
+
+def load_test_stats(model_path):
+    test_stats_path = os.path.join(model_path, "test_stats.json")
+    with open(test_stats_path, "r") as f:
+        test_stats = json.load(f)
+    return test_stats
 
 
