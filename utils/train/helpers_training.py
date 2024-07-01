@@ -80,7 +80,7 @@ def parse_args():
     parser.add_argument('--percentage-earliness-reward', type=float, default=0.3, help="percentage for earliness reward")
     parser.add_argument('--p-thresh', type=float, default=0.5, help="probability threshold")
     parser.add_argument('--factor', type=str, default='v1', help="wrong prediction penalty factor")
-    parser.add_argument('--percentage-other-alphas', type=float_list, default=None, help="percentages for other alphas")
+    parser.add_argument('--percentages-other-alphas', type=float_list, default=None, help="percentages for other alphas")
     
 
     args = parser.parse_args()
