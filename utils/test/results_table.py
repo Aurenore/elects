@@ -46,7 +46,6 @@ def create_results_table(run_names, runs_df, runs, local_dataroot, metrics_to_ke
             test_stats, stats = get_test_stats_from_model(model, test_ds, criterion, run_config)
             _ = save_test_stats(model_path, test_stats)
 
-            
         # add the test_stats to the results table
         results_table[run_name] = test_stats
         results_table[run_name]["Wrong pred. penalty"] = run_config.factor
