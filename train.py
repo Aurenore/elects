@@ -9,7 +9,7 @@ from utils.train.main import main_train
 
 if __name__ == '__main__':
     # use example: 
-    # python train.py --loss daily_reward_lin_regr --decision-head day --loss-weight balanced --corrected False --daily-timestamps False --day-head-init-bias 5 --alpha-decay 1.,0.6 --start-decision-head-training 2 --percentage-earliness-reward 0.6 --p-thresh 0.7
+    # python train.py --loss daily_reward_piecewise_lin_regr --decision-head day --loss-weight balanced --corrected False --daily-timestamps False --day-head-init-bias 1 --alpha-decay 1.,0.4 --start-decision-head-training 10 --p-thresh 0.7 --hidden-dims 128 --batchsize 128 --factor v1 --percentage-other-alphas 0.45074209570884705,0.14149823784828186,0.4077596366405487
     args = parse_args()
     wandb.init(
         dir="/mydata/studentanya/anya/wandb/",
@@ -48,6 +48,8 @@ if __name__ == '__main__':
         "architecture": "EarlyRNN",
         "optimizer": "AdamW",
         "criterion": args.loss,
+        "factor": args.factor,
+        "percentage_other_alphas": args.percentage_other_alphas,
         }
     )
     config = wandb.config

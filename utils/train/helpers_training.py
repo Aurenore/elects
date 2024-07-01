@@ -79,6 +79,9 @@ def parse_args():
     parser.add_argument('--start-decision-head-training', type=int, default=2, help="start point for decision head training")
     parser.add_argument('--percentage-earliness-reward', type=float, default=0.3, help="percentage for earliness reward")
     parser.add_argument('--p-thresh', type=float, default=0.5, help="probability threshold")
+    parser.add_argument('--factor', type=str, default='v1', help="wrong prediction penalty factor")
+    parser.add_argument('--percentage-other-alphas', type=float_list, default=None, help="percentages for other alphas")
+    
 
     args = parser.parse_args()
 
@@ -266,7 +269,7 @@ def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None, wa
         dict_criterion = {"mus": mus,
                         "percentages_other_alphas": config.percentages_other_alphas if hasattr(config, "percentages_other_alphas") else None}
         criterion = DailyRewardPiecewiseLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
-            start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
+            start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0,
             factor=config.factor, **dict_criterion)
         if wandb_update:
             wandb.config.update({"percentages_other_alphas": criterion.percentages_other_alphas.cpu().detach().numpy()})
