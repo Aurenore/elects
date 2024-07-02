@@ -284,7 +284,7 @@ def plot_fig_class_prob_wrt_time_with_mus(fig, axes, class_prob, y_true, class_n
     return fig, axes
 
 
-def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, nclasses, mus, sequencelength_test):
+def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, nclasses, mus):
     """ With the stats from the test, plot all the figures. 
         - stopping times: boxplot of the stopping times, 
         - the confusion matrix: with accuracy, 
@@ -338,7 +338,7 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
 
     if "lin_regr" in run_config.loss or run_config.loss == "daily_reward":
         fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
-        fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus, ylim=sequencelength_test, epoch=run_config.epochs)
+        fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus, ylim=args.sequencelength, epoch=run_config.epochs)
         fig_filename = os.path.join(model_path, "timestamps_left_per_class.png")
         fig_timestamps.savefig(fig_filename)
         print("fig saved at ", fig_filename)

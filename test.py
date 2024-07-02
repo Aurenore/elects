@@ -40,7 +40,9 @@ def main(run_name, sequencelength_test, plot_label_distribution=False):
     # Set the sequence length to 150 like in the original paper.
     if sequencelength_test is None: 
         sequencelength_test = run_config.sequencelength
-    test_ds, nclasses, class_names, input_dim = load_test_dataset(args, sequencelength_test)
+    else: 
+        args.sequencelength = sequencelength_test
+    test_ds, nclasses, class_names, input_dim = load_test_dataset(args)
 
     # ----------------------------- VISUALIZATION: label distribution -----------------------------
     if plot_label_distribution:
@@ -50,16 +52,16 @@ def main(run_name, sequencelength_test, plot_label_distribution=False):
         fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
 
     # ## Load the models and the criterions
-    mus = get_mus_from_config(run_config)
+    mus = get_mus_from_config(args)
     model, criterion = get_loaded_model_and_criterion(run, nclasses, input_dim, mus=mus)
 
     # ## Test the model on the test dataset
-    test_stats, stats = get_test_stats_from_model(model, test_ds, criterion, run_config)
+    test_stats, stats = get_test_stats_from_model(model, test_ds, criterion, args)
     print("test_stats:\n", test_stats)
     test_stats_path = save_test_stats(model_path, test_stats)
 
     # ----------------------------- VISUALIZATION: stopping times and timestamps left-----------------------------
-    plots_all_figs_at_test(args, stats, model_path, run_config, class_names, nclasses, mus, sequencelength_test)
+    plots_all_figs_at_test(args, stats, model_path, args, class_names, nclasses, mus)
     
     # ----------------------------- VISUALIZATION: videos of the performance during training -----------------------------
     videos_names = ["class_probabilities_wrt_time", "boxplot", "timestamps_left_plot"]

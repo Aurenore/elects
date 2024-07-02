@@ -17,7 +17,10 @@ def get_std_score(stats: dict, nclasses: int)->float:
     stds = []
     for c in range(nclasses):
         idxs = true_labels == c
-        std = t_stop[idxs].std()
+        if idxs.sum() > 1:
+            std = t_stop[idxs].std()
+        else:
+            std = 0.
         stds.append(std)
     
     return np.mean(stds)
