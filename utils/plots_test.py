@@ -1,6 +1,8 @@
 import datetime
 import torch
 import seaborn 
+import os
+import warnings
 import numpy as np 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -9,10 +11,9 @@ from matplotlib.colors import ListedColormap
 from sklearn.metrics import confusion_matrix, accuracy_score
 from data import LABELS_NAMES
 from utils.test.helpers_testing import get_prob_t_stop
-import os
 from utils.plots import boxplot_stopping_times, plot_timestamps_left_per_class, create_figure_and_axes
 from utils.doy import get_doys_dict_test, get_doy_stop
-import warnings
+from utils.test.france_calendar_crop import add_crop_calendar
 
 PALETTE=sns.color_palette("colorblind")
 grosseille = "#b51f1f"
@@ -157,8 +158,8 @@ def plot_confusion_matrix(y_true, y_pred, class_names, fig, ax, normalize=None):
     if normalize is None: 
         fmt = 'd'
     elif normalize=="true":
-        # format in percentage %, with 1 decimal
-        fmt = '.1%'
+        # format in percentage %, with 0 decimal
+        fmt = '.0%'
     else:
         fmt = '.1f'
     sns.heatmap(conf_mat.T, annot=True, cmap='Blues', ax=ax, xticklabels=class_names, yticklabels=class_names, fmt=fmt)
@@ -320,12 +321,12 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
     
     # boxplot with correctness
     fig_boxplot_correctness, ax_boxplot_correctness = plt.subplots(figsize=(12, 7))
-    fig_boxplot_correctness, _ = boxplot_stopping_times_and_correctness(doys_stop, stats, fig_boxplot_correctness, ax_boxplot_correctness, class_names)
+    fig_boxplot_correctness, _ = boxplot_stopping_times_and_correctness(doys_stop, stats, fig_boxplot_correctness, ax_boxplot_correctness, class_names, show_crop_calendar=True)
     fig_filename = os.path.join(model_path, "boxplot_stopping_times_and_correctness.png")
     fig_boxplot_correctness.savefig(fig_filename)
     print("fig saved at ", fig_filename)
 
-    fig, ax = plt.subplots(figsize=(7,7))
+    fig, ax = plt.subplots(figsize=(5,5))
     fig = plot_confusion_matrix(stats["targets"][:, 0], stats["predictions_at_t_stop"].flatten(), class_names, fig, ax)
     fig_filename = os.path.join(model_path, "confusion_matrix.png")
     fig.savefig(fig_filename)
@@ -339,7 +340,7 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
         print("fig saved at ", fig_filename)
         
     # normalized matrix 
-    fig_normalized, ax_normalized = plt.subplots(figsize=(7,7))
+    fig_normalized, ax_normalized = plt.subplots(figsize=(5,5))
     fig_normalized = plot_confusion_matrix(stats["targets"][:, 0], stats["predictions_at_t_stop"].flatten(), class_names, fig_normalized, ax_normalized, normalize='true')
     fig_filename = os.path.join(model_path, "confusion_matrix_normalized.png")
     fig_normalized.savefig(fig_filename)
@@ -364,7 +365,8 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
         print("fig saved at ", fig_filename)
     return
 
-def boxplot_stopping_times_and_correctness(doy_stop, stats, fig, ax, labels_names=LABELS_NAMES, colors=PALETTE, epoch=None):
+def boxplot_stopping_times_and_correctness(doy_stop, stats, fig, ax, labels_names=LABELS_NAMES, colors=PALETTE, epoch=None, show_crop_calendar=False):
+    labels_names = [label.replace('permanent', 'perm.').replace('temporary', 'temp.') for label in labels_names]
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=FutureWarning)
         doys_months = [datetime.datetime(2017,m,1).timetuple().tm_yday for m in range(1,13)]
@@ -389,14 +391,31 @@ def boxplot_stopping_times_and_correctness(doy_stop, stats, fig, ax, labels_name
         ax.xaxis.grid(True)
         ax.set_xticks(doys_months)
         ax.set_xticklabels(months, ha="left")
+        ax.set_xlim(0, 350)
 
         sns.despine(left=True)
         # if epoch is not None, write the epoch number on the plot at the top right corner
         if epoch is not None:
             ax.text(0.99, 0.99, f"Epoch {epoch}", transform=ax.transAxes, ha='right', va='top', fontsize=16)
-        fig.tight_layout()
         
     ax = add_color_correctness_boxplot(ax, newcmp=newcmp)
+    if show_crop_calendar:
+            final_labels_names = [text_ylabel.get_text() for text_ylabel in ax.get_yticklabels()]
+            print("final_labels_names", final_labels_names)
+            ax2 = ax.twinx()
+            # let ax and ax2 share the same y-axis
+            ax2.set_ylim(ax.get_ylim())
+            ax2.set_yticks(ax.get_yticks())
+            # Set the zorder of ax2 to be lower than ax
+            ax2.set_zorder(ax.get_zorder() - 1)
+            # Make ax2's background transparent to see ax's plot
+            ax.patch.set_visible(False)
+            ax2 = add_crop_calendar(ax2, final_labels_names, shift=-0.3)
+            # remove the yticks from ax2
+            ax2.set_yticks([])
+            # remove the spines from ax2
+            sns.despine(ax=ax2, left=True)
+    fig.tight_layout()
     return fig, ax
 
 def add_color_correctness_boxplot(ax_boxplot, newcmp=newcmp):

@@ -36,26 +36,28 @@ def month_to_day_of_year(month, year):
     # Return the day of the year
     return given_day.timetuple().tm_yday
 
-def add_crop_calendar(ax, labels_names):
+def add_crop_calendar(ax, labels_names, shift=-0.3):
     df = pd.DataFrame(data)
     # transform the number of month to day of year
     columns_date = ['Plant Start', 'Plant End', 'Mid-Season Start', 'Mid-Season End', 'Second Mid-Season Start', 'Second Mid-Season End', 'Harvest Start', 'Harvest End']
     df[columns_date] = df[columns_date].map(lambda x: month_to_day_of_year(x, 2017) if x != 0 else 0)
-    shift = -0.3
-    width = abs(shift) * 2
+    width = 0.6
     yticks = ax.get_yticks()
+    label_printed = False
     for i, y_label in enumerate(labels_names):
-        if y_label in df['Crop'].values:
-            # add the rectangle at yticks[i]+shift
-            # get the row of the crop
-            row = df[df['Crop'] == y_label].iloc[0]  # Ensure only one row is indexed
-            # Plant phase
-            ax.add_patch(plt.Rectangle((row['Plant Start'], yticks[i]+shift), row['Plant End'] - row['Plant Start'], width, color=colors_calendar[0], label='Plant' if i == 0 else ""))
-            # Mid-Season phase
-            ax.add_patch(plt.Rectangle((row['Mid-Season Start'], yticks[i]+shift), row['Mid-Season End'] - row['Mid-Season Start'], width, color=colors_calendar[1], label='Mid-Season' if i == 0 else ""))
-            ax.add_patch(plt.Rectangle((row['Second Mid-Season Start'], yticks[i]+shift), row['Second Mid-Season End'] - row['Second Mid-Season Start'], width, color=colors_calendar[1]))
-            # Harvest phase
-            ax.add_patch(plt.Rectangle((row['Harvest Start'], yticks[i]+shift), row['Harvest End'] - row['Harvest Start'], width, color=colors_calendar[2], label='Harvest' if i == 0 else ""))
-    # place the legend at the bottom right
+        for crop_label in df['Crop'].values:
+            if crop_label in y_label:
+                # add the rectangle at yticks[i]+shift
+                # get the row of the crop
+                row = df[df['Crop'] == crop_label].iloc[0]  # Ensure only one row is indexed
+                # Plant phase
+                ax.add_patch(plt.Rectangle((row['Plant Start'], yticks[i]+shift), row['Plant End'] - row['Plant Start'], width, color=colors_calendar[0], label='Plant' if not label_printed else ""))
+                # Mid-Season phase
+                ax.add_patch(plt.Rectangle((row['Mid-Season Start'], yticks[i]+shift), row['Mid-Season End'] - row['Mid-Season Start'], width, color=colors_calendar[1], label='Mid-Season' if not label_printed else ""))
+                ax.add_patch(plt.Rectangle((row['Second Mid-Season Start'], yticks[i]+shift), row['Second Mid-Season End'] - row['Second Mid-Season Start'], width, color=colors_calendar[1]))
+                # Harvest phase
+                ax.add_patch(plt.Rectangle((row['Harvest Start'], yticks[i]+shift), row['Harvest End'] - row['Harvest Start'], width, color=colors_calendar[2], label='Harvest' if not label_printed else ""))
+                label_printed = True
+        # place the legend at the bottom right
     ax.legend(loc='lower right', bbox_to_anchor=(1, 0), fontsize=14)
     return ax
