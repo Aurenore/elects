@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import datetime
 import seaborn as sns
 import warnings
+from utils.test.france_calendar_crop import add_crop_calendar
 PALETTE=sns.color_palette("colorblind")
 SPECTRAL_BANDS = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B10', 'B11', 'B12',
                'QA10', 'QA20', 'QA60', 'doa']
@@ -55,7 +56,9 @@ def plot_label_distribution_datasets(datasets: list, sets_labels: list, fig, ax,
     return fig, ax
 
 
-def boxplot_stopping_times(doy_stop, stats, fig, ax, labels_names=LABELS_NAMES, colors=PALETTE, epoch=None):
+def boxplot_stopping_times(doy_stop, stats, fig, ax, labels_names=LABELS_NAMES, colors=PALETTE, epoch=None, show_crop_calendar=False):
+    # replace 'permanent' by 'perm.' and 'temporary' by 'temp.' in LABELS_NAMES
+    labels_names = [label.replace('permanent', 'perm.').replace('temporary', 'temp.') for label in labels_names]
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=FutureWarning)
         doys_months = [datetime.datetime(2017,m,1).timetuple().tm_yday for m in range(1,13)]
@@ -63,11 +66,15 @@ def boxplot_stopping_times(doy_stop, stats, fig, ax, labels_names=LABELS_NAMES, 
         
         sns.boxplot(x=doy_stop,y=stats["targets"][:,0],orient="h",ax=ax,showfliers=False, palette=colors[:len(labels_names)])
         ax.set_yticks(range(len(labels_names)))
-        ax.set_yticklabels(labels_names, fontsize=16)
-        ax.set_xlabel("day of year", fontsize=16)
+        ax.set_yticklabels(labels_names, fontsize=18)
+        ax.set_xlabel("day of year", fontsize=18)
+        
+        if show_crop_calendar:
+            ax = add_crop_calendar(ax, labels_names)
 
         ax.xaxis.grid(True)
         ax.set_xticks(doys_months)
+        ax.set_xlim(0, 350)
         ax.set_xticklabels(months, ha="left")
 
         sns.despine(left=True)

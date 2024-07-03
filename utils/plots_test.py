@@ -164,6 +164,8 @@ def plot_confusion_matrix(y_true, y_pred, class_names, fig, ax, normalize=None):
     sns.heatmap(conf_mat.T, annot=True, cmap='Blues', ax=ax, xticklabels=class_names, yticklabels=class_names, fmt=fmt)
 
     # Labels, title and ticks
+    # simplify the class_names by replacing 'permanent' by 'perm.' and 'temporary' by 'temp.'
+    class_names = [label.replace('permanent', 'perm.').replace('temporary', 'temp.') for label in class_names]
     ax.set_xlabel('True labels')
     ax.set_ylabel('Predicted labels')
     ax.xaxis.set_ticklabels(class_names, rotation=45, ha='right')
@@ -305,19 +307,19 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
     Returns:
         None    
     """
-    fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
+    fig_boxplot, ax_boxplot = plt.subplots(figsize=(12, 5))
     if args.daily_timestamps:
         doys_stop = stats["t_stop"].squeeze()
     else: 
         doys_dict_test = get_doys_dict_test(dataroot=os.path.join(args.dataroot,args.dataset))
         doys_stop = get_doy_stop(stats, doys_dict_test, approximated=False)
-    fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names)
+    fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names, show_crop_calendar=True)
     fig_filename = os.path.join(model_path, "boxplot_stopping_times.png")
     fig_boxplot.savefig(fig_filename)
     print("fig saved at ", fig_filename)
     
     # boxplot with correctness
-    fig_boxplot_correctness, ax_boxplot_correctness = plt.subplots(figsize=(15, 7))
+    fig_boxplot_correctness, ax_boxplot_correctness = plt.subplots(figsize=(12, 7))
     fig_boxplot_correctness, _ = boxplot_stopping_times_and_correctness(doys_stop, stats, fig_boxplot_correctness, ax_boxplot_correctness, class_names)
     fig_filename = os.path.join(model_path, "boxplot_stopping_times_and_correctness.png")
     fig_boxplot_correctness.savefig(fig_filename)
@@ -329,6 +331,13 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
     fig.savefig(fig_filename)
     print("fig saved at ", fig_filename)
     
+    if len(class_names) == 9:
+        fig, ax = plt.subplots(1,1, figsize=(4,4))
+        fig, ax = plot_confusion_matrix_like_elects(fig, ax, stats)
+        fig_filename = os.path.join(model_path, "confusion_matrix_like_elects.png")
+        fig.savefig(fig_filename, bbox_inches='tight')
+        print("fig saved at ", fig_filename)
+        
     # normalized matrix 
     fig_normalized, ax_normalized = plt.subplots(figsize=(7,7))
     fig_normalized = plot_confusion_matrix(stats["targets"][:, 0], stats["predictions_at_t_stop"].flatten(), class_names, fig_normalized, ax_normalized, normalize='true')
@@ -340,7 +349,7 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
         fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
         fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus, ylim=args.sequencelength, epoch=run_config.epochs)
         fig_filename = os.path.join(model_path, "timestamps_left_per_class.png")
-        fig_timestamps.savefig(fig_filename)
+        fig_timestamps.savefig(fig_filename, bbox_inches='tight')
         print("fig saved at ", fig_filename)
             
         fig_prob_class, axes_prob_class = create_figure_and_axes(nclasses, n_cols=2)
@@ -417,3 +426,48 @@ def add_color_correctness_boxplot(ax_boxplot, newcmp=newcmp):
                        title="Prediction Correctness", loc='upper right', fontsize=16)
             
     return ax_boxplot
+
+
+def plot_confusion_matrix_like_elects(fig, ax, stats, labels_names=LABELS_NAMES):
+    # simplify the labels names
+    labels_names = [label.replace('permanent', 'perm.').replace('temporary', 'temp.') for label in labels_names]
+    y_pred = stats["predictions_at_t_stop"][:,0]
+    y_true = stats["targets"][:,0]
+    # check that y_true has the same length as y_pred
+    if len(y_true) != len(y_pred):
+        print("y_true and y_pred have different lengths")
+        return
+    # check that the unique labels in y_true are the same amount as the labels_names
+    assert len(np.unique(y_true)) == len(labels_names)
+
+    cm_norm = confusion_matrix(y_pred, y_true, normalize="true")
+    cm = confusion_matrix(y_pred, y_true)
+
+    plt.rc("axes.spines", top=False, right=False, bottom=False, left=False)
+
+    ax.set_xticks(range(len(labels_names)))
+    ax.set_xticklabels(labels_names, rotation=45, ha="right")
+
+    ax.set_yticks(range(len(labels_names)))
+    ax.set_yticklabels(labels_names, rotation=45, ha="right")
+
+    im = ax.imshow(cm_norm, cmap="Blues", vmin=0, vmax=1)
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            color = "white" if cm_norm[i,j] > 0.5 else "black"
+            txt = str(cm[i,j])
+            txt = txt[:-3] + "k" if len(txt) > 3 else txt
+            ax.text(i,j, txt, ha="center", va="center", color=color)
+            
+    cbar = fig.colorbar(im, ax=ax, location='right', shrink=0.9, pad = 0.07)
+    cbar.ax.set_title('recall')
+
+    ax.yaxis.set_label_position("right")
+    ax.set_ylabel("predicted")
+    ax.xaxis.set_label_position("top")
+    ax.set_xlabel("true")
+
+    accuracy = accuracy_score(y_pred, y_true)
+    ax.set_title(f"ov. accuracy {accuracy*100:.0f}%")  
+    fig.tight_layout()
+    return fig, ax
