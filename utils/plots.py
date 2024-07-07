@@ -38,6 +38,8 @@ def plot_label_distribution_datasets(datasets: list, sets_labels: list, fig, ax,
     Plot the label distribution for multiple datasets
     """
     assert len(datasets) == len(sets_labels)
+    # change "permanent" to "perm." and "temporary" to "temp." in LABELS_NAMES
+    labels_names = [label.replace('permanent', 'perm.').replace('temporary', 'temp.') for label in labels_names]
     width = 0.8/len(datasets)
     for i, ds in enumerate(datasets):
         print(f"Extracting labels from dataset {sets_labels[i]}.")
@@ -51,7 +53,8 @@ def plot_label_distribution_datasets(datasets: list, sets_labels: list, fig, ax,
     ax.set_xlabel('Label')
     ax.set_ylabel('Frequency (log scale)')
     ax.set_yscale('log')
-    ax.legend()
+    # place the legend next to the plot
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     fig.tight_layout()
     return fig, ax
 
@@ -98,15 +101,19 @@ def plot_boxplot(labels, t_stops, fig, ax, label_names: list=LABELS_NAMES, tmin=
     return fig, ax
 
 
-def plot_spectral_bands(idx, test_ds, doys_dict_test, class_names, fig, ax, palette=PALETTE):
+def plot_spectral_bands(idx, test_ds, doys_dict_test, class_names, fig, ax, palette=PALETTE, linestyle='-'):
     doys_months = [datetime.datetime(2017,m,1).timetuple().tm_yday for m in range(1,13)]
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     X, y, id_ = test_ds[idx]  # Ensure test_ds is accessible and contains the expected data structure
+    if test_ds.daily_timestamps:
+        time = np.arange(0, 365, 1)
+    else: 
+        time = doys_dict_test[id_]
     # Ensure doys_dict_test and class_names are accessible and contain the expected data structures
     for band_idx, band_data in enumerate(X.T):  # Assuming X is structured with bands along columns
-        ax.plot(doys_dict_test[id_], band_data[:len(doys_dict_test[id_])], color=palette[band_idx % len(palette)])
-    
-    ax.legend(SPECTRAL_BANDS)
+        ax.plot(time, band_data[:len(time)], linestyle, color=palette[band_idx % len(palette)])
+    # set legend next to the figure
+    ax.legend(SPECTRAL_BANDS, loc='center left', bbox_to_anchor=(1, 0.5))
     ax.grid()
     ax.set_xticks(doys_months)
     ax.set_xticklabels(months, ha="left")
