@@ -2,7 +2,7 @@ import torch
 import os 
 import json
 
-def set_up_config(config, print_comments:bool=False):
+def set_up_config(config, print_comments:bool=False, final_train:bool=False):
     """ sets up the configuration for training and testing. If the configuration is not set, it sets the default values.
     
     Args:
@@ -59,6 +59,9 @@ def set_up_config(config, print_comments:bool=False):
         config.class_weights = config.class_weights.clone().detach().to(config.device)
         if print_comments:
             print(f"weights moved to device {config.device}")
+            
+    if final_train:
+        config.validation_set = "eval"
     
     return config
 

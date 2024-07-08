@@ -43,6 +43,13 @@ class BreizhCrops(Dataset):
             elif partition == "eval":
                 self.ds = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
                 self.labels_names = self.ds.labels_names
+            elif partition == "final_train":
+                # group validation and train set together
+                frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                frh03 = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                self.ds = torch.utils.data.ConcatDataset([frh01, frh02, frh03])
+                self.labels_names = frh01.labels_names
         else:
             # because of the corrected flag, we need to load the datasets differently for the sizes to be reasonable
             if partition == "train":
@@ -58,6 +65,12 @@ class BreizhCrops(Dataset):
                 self.ds_1 = frh03
                 self.ds_2 = frh04
                 self.labels_names = frh03.labels_names
+            elif partition == "final_train":
+                # group validation and train set together
+                frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                self.ds = torch.utils.data.ConcatDataset([frh01, frh02])
+                self.labels_names = frh01.labels_names
 
         self.corrected = corrected
         self.daily_timestamps = daily_timestamps 

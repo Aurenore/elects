@@ -124,7 +124,7 @@ def train_epoch(model, dataloader, optimizer, criterion, device, **kwargs):
     return np.stack(losses).mean()
 
 # ----------------- FUNCTIONS IN MAIN -----------------
-def load_dataset(config):
+def load_dataset(config, partition="train"):
     """ loads the dataset and returns the train and test dataloaders, as well as other dataset related information.
 
     Args:
@@ -149,7 +149,7 @@ def load_dataset(config):
         doys_dict_test = get_doys_dict_test(dataroot=os.path.join(config.dataroot,config.dataset))
         length_sorted_doy_dict_test = create_sorted_doys_dict_test(doys_dict_test)
         print("get train and validation data...")
-        train_ds = BreizhCrops(root=dataroot,partition="train", sequencelength=config.sequencelength, corrected=config.corrected, \
+        train_ds = BreizhCrops(root=dataroot,partition=partition, sequencelength=config.sequencelength, corrected=config.corrected, \
             daily_timestamps=config.daily_timestamps, original_time_serie_lengths=config.original_time_serie_lengths)
         test_ds = BreizhCrops(root=dataroot,partition=config.validation_set, sequencelength=config.sequencelength, corrected=config.corrected, \
             daily_timestamps=config.daily_timestamps, original_time_serie_lengths=config.original_time_serie_lengths)
