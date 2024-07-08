@@ -15,10 +15,8 @@ from utils.helpers_mu import get_mus_from_config
 from utils.results_analysis.extract_video import download_images, add_files_to_images, save_video
 import argparse
 
-def main(run_name, sequencelength_test, plot_label_distribution=False):
+def main(run_name, sequencelength_test, plot_label_distribution=False, local_dataroot=os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")):
     print(f"Test the model from run '{run_name}' on the test dataset")
-    local_dataroot = os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")
-    print("Local dataroot: ", local_dataroot)
 
     # ## Download the model from wandb 
     entity, project = "aurenore", "MasterThesis"
@@ -34,6 +32,9 @@ def main(run_name, sequencelength_test, plot_label_distribution=False):
     config_path = save_config(model_path, run)
     print_config(run)
     args  = set_up_config(run_config)
+    if local_dataroot == 'config':
+        local_dataroot = args.dataroot
+    print("Local dataroot: ", local_dataroot)
     args.dataroot = local_dataroot
 
     # ----------------------------- LOAD DATASET -----------------------------
@@ -77,9 +78,16 @@ if __name__ == "__main__":
     parser.add_argument("--run-name", type=str, help="name of the run to test")
     parser.add_argument("--sequencelength-test", type=int, help="sequence length of the test dataset", default=None)
     parser.add_argument("--plot-label-distribution", type=bool, help="plot the label distribution", default=False)
+    parser.add_argument("--dataroot", type=str, help="local dataroot", default='default')
     args = parser.parse_args()
     run_name = args.run_name
     sequencelength_test = args.sequencelength_test
     plot_label_distribution = args.plot_label_distribution
-    main(run_name, sequencelength_test, plot_label_distribution)
+    if args.dataroot == 'default':
+        local_dataroot = os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")
+    elif args.dataroot == 'config':
+        local_dataroot = 'config'
+    else:
+        local_dataroot = args.dataroot
+    main(run_name, sequencelength_test, plot_label_distribution, local_dataroot=local_dataroot)
     print("Done.")

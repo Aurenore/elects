@@ -223,7 +223,7 @@ def set_up_class_weights(config, train_ds):
         class_weights = train_ds.get_class_weights().to(config.device)
     else: 
         class_weights = None
-    config.update({"class_weights": class_weights.cpu().detach().numpy() if class_weights is not None else None})
+    config.update({"class_weights": class_weights.cpu().detach().numpy() if class_weights is not None else None}, allow_val_change=True)
     return class_weights
     
 def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None, wandb_update: bool=True):
@@ -249,6 +249,7 @@ def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None, wa
             mus = torch.ones(nclasses)*mu
         else: 
             print(f"loss {config.loss} selected, mus set to {mus}")
+            mus = torch.tensor(mus, dtype=torch.float)
             
     if config.loss == "early_reward":
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)

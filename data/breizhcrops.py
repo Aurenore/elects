@@ -30,7 +30,7 @@ class BreizhCrops(Dataset):
         - corrected: bool, if True, only time series with lengths "original_time_serie_lengths" will be kept
         - daily_timestamps: bool, if True, the sequences will be of length 365, corresponding to the days of the year. The time series will be padded with zeros
         """
-        assert partition in ["train", "valid", "eval"]
+        assert partition in ["train", "valid", "eval", "final_train"]
         if not corrected:
             if partition == "train":
                 frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
