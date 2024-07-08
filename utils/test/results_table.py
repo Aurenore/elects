@@ -7,7 +7,7 @@ from utils.helpers_mu import get_mus_from_config
 import argparse
 import pandas as pd 
 
-def create_results_table(run_names, runs_df, runs, local_dataroot, metrics_to_keep = ["Wrong pred. penalty", "accuracy", "elects_earliness", "harmonic_mean", "std_score"]):
+def create_results_table(run_names, runs_df, runs, local_dataroot, partition, sequencelength_test=None, metrics_to_keep = ["Wrong pred. penalty", "accuracy", "elects_earliness", "harmonic_mean", "std_score"]):
     results_table = dict()
     is_data_loaded = False
     for run_name in run_names:
@@ -16,6 +16,9 @@ def create_results_table(run_names, runs_df, runs, local_dataroot, metrics_to_ke
         run = runs[run_idx]
         run_config = argparse.Namespace(**run.config)
         model_artifact, model_path = get_model_and_model_path(run)
+        model_path = os.path.join(model_path, partition+"_"+str(sequencelength_test))
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
         
         # check if test_stats already exist in model_path 
         test_stats_path = os.path.join(model_path, "test_stats.json")
@@ -35,7 +38,7 @@ def create_results_table(run_names, runs_df, runs, local_dataroot, metrics_to_ke
                 # Load the data
                 sequencelength_test = run_config.sequencelength
                 args.preload_ram = True
-                test_ds, nclasses, class_names, input_dim = load_test_dataset(args, sequencelength_test)
+                test_ds, nclasses, class_names, input_dim = load_test_dataset(args, partition=partition)
                 is_data_loaded = True
                 
             # ## Load the models and the criterions
