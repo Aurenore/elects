@@ -15,8 +15,9 @@ from utils.helpers_mu import get_mus_from_config
 from utils.results_analysis.extract_video import download_images, add_files_to_images, save_video
 import argparse
 
-def main(run_name, sequencelength_test, plot_label_distribution=False, local_dataroot=os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")):
-    print(f"Test the model from run '{run_name}' on the test dataset")
+def main(run_name, sequencelength_test, plot_label_distribution=False, partition='eval', \
+    local_dataroot=os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")):
+    print(f"Test the model from run '{run_name}' on the {partition} dataset")
 
     # ## Download the model from wandb 
     entity, project = "aurenore", "MasterThesis"
@@ -27,6 +28,9 @@ def main(run_name, sequencelength_test, plot_label_distribution=False, local_dat
     run = runs[run_idx]
     run_config = argparse.Namespace(**run.config)
     model_artifact, model_path = get_model_and_model_path(run)
+    model_path = os.path.join(model_path, partition+"_"+str(sequencelength_test))
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
 
     # get and save the config
     config_path = save_config(model_path, run)
@@ -43,7 +47,7 @@ def main(run_name, sequencelength_test, plot_label_distribution=False, local_dat
         sequencelength_test = run_config.sequencelength
     else: 
         args.sequencelength = sequencelength_test
-    test_ds, nclasses, class_names, input_dim = load_test_dataset(args)
+    test_ds, nclasses, class_names, input_dim = load_test_dataset(args, partition=partition)
 
     # ----------------------------- VISUALIZATION: label distribution -----------------------------
     if plot_label_distribution:
@@ -79,15 +83,17 @@ if __name__ == "__main__":
     parser.add_argument("--sequencelength-test", type=int, help="sequence length of the test dataset", default=None)
     parser.add_argument("--plot-label-distribution", type=bool, help="plot the label distribution", default=False)
     parser.add_argument("--dataroot", type=str, help="local dataroot", default='default')
+    parser.add_argument("--partition", type=str, help="partition to test on", default='eval')
     args = parser.parse_args()
     run_name = args.run_name
     sequencelength_test = args.sequencelength_test
     plot_label_distribution = args.plot_label_distribution
+    partition=args.partition
     if args.dataroot == 'default':
         local_dataroot = os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")
     elif args.dataroot == 'config':
         local_dataroot = 'config'
     else:
         local_dataroot = args.dataroot
-    main(run_name, sequencelength_test, plot_label_distribution, local_dataroot=local_dataroot)
+    main(run_name, sequencelength_test, plot_label_distribution, partition, local_dataroot=local_dataroot)
     print("Done.")
