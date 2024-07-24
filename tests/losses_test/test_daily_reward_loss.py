@@ -45,9 +45,10 @@ class TestDailyRewardPiecewiseLinRegrLoss():
             self.mu = 150.
             self.factor = "v2"
             
-        def update(self, dict_args: dict):
-            for key, value in dict_args.items():
-                setattr(self, key, value)
+        def update(self, dict_args: dict, allow_val_change: bool=True):
+            if allow_val_change:
+                for key, value in dict_args.items():
+                    setattr(self, key, value)
                 
     @pytest.fixture
     def config(self):

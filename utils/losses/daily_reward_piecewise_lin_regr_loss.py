@@ -27,13 +27,12 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
         assert factor in ["v1", "v2"], f"factor {factor} not implemented"
         super(DailyRewardPiecewiseLinRegrLoss, self).__init__(alpha=alpha, weight=weight, alpha_decay=alpha_decay, epochs=epochs, start_decision_head_training=start_decision_head_training, **kwargs)
         self.factor = factor
-        if "percentages_other_alphas" in kwargs:
-            if kwargs["percentages_other_alphas"] is not None:
-                if len(kwargs["percentages_other_alphas"]) != 3:
-                    raise ValueError("percentages_other_alphas should have length 3.")
-                if not torch.isclose(torch.tensor(kwargs["percentages_other_alphas"]).sum(), torch.tensor(1.)):
-                    raise ValueError("percentages_other_alphas should sum to 1.")
-                self.percentages_other_alphas = kwargs["percentages_other_alphas"]
+        if ("percentages_other_alphas" in kwargs) and ( kwargs["percentages_other_alphas"] is not None):
+            if len(kwargs["percentages_other_alphas"]) != 3:
+                raise ValueError("percentages_other_alphas should have length 3.")
+            if not torch.isclose(torch.tensor(kwargs["percentages_other_alphas"]).sum(), torch.tensor(1.)):
+                raise ValueError("percentages_other_alphas should sum to 1.")
+            self.percentages_other_alphas = kwargs["percentages_other_alphas"]
         else: 
             self.percentages_other_alphas = sample_three_uniform_numbers()
         if not isinstance(self.percentages_other_alphas, torch.Tensor):

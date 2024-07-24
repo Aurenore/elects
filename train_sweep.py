@@ -1,7 +1,5 @@
 import sys
 import os 
-#os.environ['MPLCONFIGDIR'] = "$HOME"
-#os.environ["WANDB_DIR"] = os.path.join(os.path.dirname(__file__), "..", "wandb")
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import wandb
 from utils.train.main import main_train
