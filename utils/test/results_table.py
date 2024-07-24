@@ -59,20 +59,6 @@ def create_results_table(run_names, runs_df, runs, local_dataroot, partition, se
     return results_table
 
 
-def create_results_table_end_of_training(run_names, runs_df, runs, metrics_to_keep = ["accuracy", "elects_earliness", "harmonic_mean", "std_score"]):
-    results_table = dict()
-    for run_name in run_names:
-        run_idx = runs_df[runs_df.name == run_name].index[0]
-        run = runs[run_idx]
-        results_run = dict()
-        for metric in metrics_to_keep:
-            results_run[metric] = run.summary[metric]
-        factor = run.config["factor"]
-        results_run["Wrong pred. penalty"] = factor
-        results_table[run_name] = results_run
-    return results_table
-
-
 def get_latex_table(results_table, new_columns = ["Wrong pred. penalty", "Accuracy", "Earliness", "Harmonic Mean", "STD score"]):
     df = pd.DataFrame(results_table).T
     # move the column "Wrong pred. penalty" as the first column 

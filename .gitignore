@@ -15,5 +15,4 @@ EDA/wandb
 /venv
 *.json
 *.pkl
-*.yaml
 *.mp4

@@ -2,6 +2,21 @@ import torch
 import os 
 import json
 import wandb
+from yaml import safe_load 
+
+def load_personal_config(path = os.path.join("..", "config", "personal_config.yaml")):
+    """ load the personal config in config/personal_config.yaml"""
+    with open(path, 'r') as file:
+        config = safe_load(file)
+    entity = config["entity"]
+    project = config["project"]
+    sweep = config["sweep"]
+    assert len(entity) > 0, "entity should not be empty, please fill in the personal_config.yaml file"
+    assert len(project) > 0, "project should not be empty, please fill in the personal_config.yaml file"
+    if len(sweep) == 0:
+        # if sweep is empty, only give a warning. 
+        print("sweep is empty in personal_config.yaml file.")
+    return entity, project, sweep
 
 def set_up_config(config, print_comments:bool=False, final_train:bool=False):
     """ sets up the configuration for training and testing. If the configuration is not set, it sets the default values.
