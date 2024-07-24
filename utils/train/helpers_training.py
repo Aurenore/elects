@@ -39,6 +39,10 @@ def get_run_config():
         print(run_config)
     else:
         ValueError("Please provide a config file")
+    if "dataroot" not in run_config:
+        run_config["dataroot"] = os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")
+    if "snapshot" not in run_config: 
+        run_config["snapshot"] = os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data", "models", "model.pth")
     return run_config
 
 
