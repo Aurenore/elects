@@ -1,62 +1,99 @@
-import sys
+#!/usr/bin/env python
+# coding: utf-8
+# # test model on test data 
+# Test the model on the test data and save the results.
+
 import os 
 os.environ['MPLCONFIGDIR'] = '/myhome'
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
-from data import BavarianCrops, BreizhCrops, SustainbenchCrops, ModisCDL
-from earlyrnn import EarlyRNN
-import torch
-from loss import EarlyRewardLoss
-import pandas as pd
-from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times
-from utils.doy import get_doys_dict_test, get_doy_stop
-from utils.helpers_training import parse_args
-from utils.helpers_testing import test_dataset, get_test_stats
+from utils.plots import plot_label_distribution_datasets
+from utils.helpers_config import set_up_config, save_config, print_config
+from utils.test.helpers_testing import get_test_stats_from_model, load_test_dataset, save_test_stats
+from utils.plots_test import plots_all_figs_at_test
 import matplotlib.pyplot as plt
+from utils.test.load_model import get_all_runs, get_loaded_model_and_criterion, get_model_and_model_path
+from utils.helpers_mu import get_mus_from_config
+from utils.results_analysis.extract_video import download_images, add_files_to_images, save_video
+import argparse
 
+def main(run_name, sequencelength_test, plot_label_distribution=False, partition='eval', \
+    local_dataroot=os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")):
+    print(f"Test the model from run '{run_name}' on the {partition} dataset")
 
-def main(args):
+    # ## Download the model from wandb 
+    entity, project = "aurenore", "MasterThesis"
+    runs_df, runs = get_all_runs(entity, project)
+
+    # get the run with name:
+    run_idx = runs_df[runs_df.name == run_name].index[0]
+    run = runs[run_idx]
+    run_config = argparse.Namespace(**run.config)
+    model_artifact, model_path = get_model_and_model_path(run)
+    model_path = os.path.join(model_path, partition+"_"+str(sequencelength_test))
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+
+    # get and save the config
+    config_path = save_config(model_path, run)
+    print_config(run)
+    args  = set_up_config(run_config)
+    if local_dataroot == 'config':
+        local_dataroot = args.dataroot
+    print("Local dataroot: ", local_dataroot)
+    args.dataroot = local_dataroot
+
     # ----------------------------- LOAD DATASET -----------------------------
-    if args.dataset == "breizhcrops":
-        dataroot = os.path.join(args.dataroot,"breizhcrops")
-        nclasses = 9
-        input_dim = 13
-        doys_dict_test = get_doys_dict_test(dataroot=os.path.join(args.dataroot,args.dataset))
-        test_ds = BreizhCrops(root=dataroot,partition="eval", sequencelength=args.sequencelength, return_id=True)
-        class_names = test_ds.ds.classname
-        print("class names:", class_names)
-    else:
-        raise ValueError(f"dataset {args.dataset} not recognized")
+    # Set the sequence length to 150 like in the original paper.
+    if sequencelength_test is None: 
+        sequencelength_test = run_config.sequencelength
+    else: 
+        args.sequencelength = sequencelength_test
+    test_ds, nclasses, class_names, input_dim = load_test_dataset(args, partition=partition)
 
     # ----------------------------- VISUALIZATION: label distribution -----------------------------
-    datasets = [test_ds]
-    sets_labels = ["Test"]
-    fig, ax = plt.subplots(figsize=(15, 7))
-    fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
-        
-    # ----------------------------- LOAD MODEL -----------------------------
-    model = EarlyRNN(nclasses=nclasses, input_dim=input_dim, hidden_dims=args.hidden_dims, sequencelength=args.sequencelength).to(args.device)
-    model.load_state_dict(torch.load(args.snapshot))
-    print("model loaded from", args.snapshot) 
-    criterion = EarlyRewardLoss(alpha=args.alpha, epsilon=args.epsilon)
+    if plot_label_distribution:
+        datasets = [test_ds]
+        sets_labels = ["Test"]
+        fig, ax = plt.subplots(figsize=(15, 7))
+        fig, ax = plot_label_distribution_datasets(datasets, sets_labels, fig, ax, title='Label distribution', labels_names=class_names)
+
+    # ## Load the models and the criterions
+    mus = get_mus_from_config(args)
+    model, criterion = get_loaded_model_and_criterion(run, nclasses, input_dim, mus=mus)
+
+    # ## Test the model on the test dataset
+    test_stats, stats = get_test_stats_from_model(model, test_ds, criterion, args)
+    print("test_stats:\n", test_stats)
+    test_stats_path = save_test_stats(model_path, test_stats)
+
+    # ----------------------------- VISUALIZATION: stopping times and timestamps left-----------------------------
+    plots_all_figs_at_test(args, stats, model_path, args, class_names, nclasses, mus)
     
-    # ----------------------------- TEST -----------------------------
-    testloss, stats = test_dataset(model, test_ds, criterion, args.device, args.batchsize)
-    test_stats = get_test_stats(stats, testloss, args)
-    
-    fig_boxplot, ax_boxplot = plt.subplots(figsize=(15, 7))
-    doys_stop = get_doy_stop(stats, doys_dict_test, approximated=False)
-    fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names)
-
-    # ----------------------------- SAVE -----------------------------
-    fig.savefig(os.path.join(os.path.dirname(args.snapshot), "label_distribution.png"), bbox_inches='tight')
-    fig_boxplot.savefig(os.path.join(os.path.dirname(args.snapshot), "stopping_times.png"), bbox_inches='tight')
-    test_stats_df = pd.DataFrame(test_stats, index=[0])
-    test_stats_df.to_csv(os.path.join(os.path.dirname(args.snapshot), "test_stats.csv"))
-    plt.show()
+    # ----------------------------- VISUALIZATION: videos of the performance during training -----------------------------
+    videos_names = ["class_probabilities_wrt_time", "boxplot", "timestamps_left_plot"]
+    for name_image in videos_names:
+        download_images(name_image, run, model_path)
+        images, images_directory = add_files_to_images(model_path, name_image)
+        video_path = save_video(images_directory, images, name_image+"_video.mp4")
 
 
-if __name__ == '__main__':
-    # use example: 
-    # python test.py --dataset breizhcrops --snapshot ./models/breizhcrops_models/elects_lstm/model.pth --sequencelength 150 --hidden-dims 64
-    args = parse_args()
-    main(args)
+if __name__ == "__main__":
+    # run with: python test.py --run-name lemon-donkey-4636
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--run-name", type=str, help="name of the run to test")
+    parser.add_argument("--sequencelength-test", type=int, help="sequence length of the test dataset", default=None)
+    parser.add_argument("--plot-label-distribution", type=bool, help="plot the label distribution", default=False)
+    parser.add_argument("--dataroot", type=str, help="local dataroot", default='default')
+    parser.add_argument("--partition", type=str, help="partition to test on", default='eval')
+    args = parser.parse_args()
+    run_name = args.run_name
+    sequencelength_test = args.sequencelength_test
+    plot_label_distribution = args.plot_label_distribution
+    partition=args.partition
+    if args.dataroot == 'default':
+        local_dataroot = os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")
+    elif args.dataroot == 'config':
+        local_dataroot = 'config'
+    else:
+        local_dataroot = args.dataroot
+    main(run_name, sequencelength_test, plot_label_distribution, partition, local_dataroot=local_dataroot)
+    print("Done.")

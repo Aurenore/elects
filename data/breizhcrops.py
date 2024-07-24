@@ -6,32 +6,81 @@ import numpy as np
 LABELS_NAMES = ['barley', 'wheat', 'rapeseed', 'corn', 'sunflower', 'orchards',
        'nuts', 'perm. mead', 'temp. mead']
 
+APPROXIMATED_DOY_51 = [2, 12, 15, 32, 42, 52, 62, 72, 82, 92, 102, 112, 122, 132, 142, 152, 162, 172, \
+                       182, 187, 192, 197, 202, 207, 212, 217, 227, 232, 237, 242, 252, 257, 262, 267, 272, 277, \
+                       282, 292, 297, 302, 307, 312, 317, 322, 327, 332, 342, 347, 352, 357, 362] 
+
+APPROXIMATED_DOY_102 = [2, 5, 12, 15, 25, 32, 35, 42, 45, 52, 55, 62, 65, 72, 75, 82, 85, 92, \
+                        95, 102, 105, 112, 115, 122, 125, 132, 135, 142, 145, 152, 155, 162, 165, 172, 175, 180, \
+                        182, 185, 187, 190, 192, 195, 197, 200, 202, 205, 207, 210, 212, 215, 217, 220, 225, 227, \
+                        230, 232, 235, 237, 242, 245, 250, 252, 255, 257, 260, 262, 265, 267, 270, 272, 275, 277, \
+                        280, 282, 292, 295, 297, 300, 302, 305, 307, 310, 312, 315, 317, 320, 322, 325, 327, 330, \
+                        332, 335, 340, 342, 345, 347, 350, 352, 355, 357, 360, 362]
+
 class BreizhCrops(Dataset):
-    def __init__(self, partition="train", root="breizhcrops_dataset", sequencelength=70, year=2017, return_id=False, corrected=False):
-        assert partition in ["train", "valid", "eval"]
+    def __init__(self, partition="train", root="breizhcrops_dataset", sequencelength=70, year=2017, return_id=False, corrected=False, daily_timestamps=False, original_time_serie_lengths=[51, 102], preload_ram=True):
+        """
+        BreizhCrops dataset 
+        INPUT: 
+        - partition: str, either "train", "valid" or "eval"
+        - root: str, path to the root folder where the data is stored
+        - sequencelength: int, the length of the sequences that will be returned
+        - year: int, the year of the data, either 2017 or 2018
+        - return_id: bool, if True, the id of the field will be returned with the data
+        - corrected: bool, if True, only time series with lengths "original_time_serie_lengths" will be kept
+        - daily_timestamps: bool, if True, the sequences will be of length 365, corresponding to the days of the year. The time series will be padded with zeros
+        """
+        assert partition in ["train", "valid", "eval", "final_train"]
         if not corrected:
             if partition == "train":
-                frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
-                frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
                 self.ds = torch.utils.data.ConcatDataset([frh01, frh02])
+                self.labels_names = frh01.labels_names
             elif partition == "valid":
-                self.ds = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                self.ds = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                self.labels_names = self.ds.labels_names
             elif partition == "eval":
-                self.ds = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                self.ds = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                self.labels_names = self.ds.labels_names
+            elif partition == "final_train":
+                # group validation and train set together
+                frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                frh03 = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                self.ds = torch.utils.data.ConcatDataset([frh01, frh02, frh03])
+                self.labels_names = frh01.labels_names
         else:
             # because of the corrected flag, we need to load the datasets differently for the sizes to be reasonable
             if partition == "train":
-                self.ds = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                self.ds = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                self.labels_names = self.ds.labels_names
             elif partition == "valid":
-                self.ds = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                self.ds = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                self.labels_names = self.ds.labels_names
             elif partition == "eval":
-                frh03 = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
-                frh04 = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=True, year=year, corrected=corrected)
+                frh03 = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                frh04 = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
                 self.ds = torch.utils.data.ConcatDataset([frh03, frh04])
+                self.ds_1 = frh03
+                self.ds_2 = frh04
+                self.labels_names = frh03.labels_names
+            elif partition == "final_train":
+                # group validation and train set together
+                frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                self.ds = torch.utils.data.ConcatDataset([frh01, frh02])
+                self.labels_names = frh01.labels_names
 
-        self.sequencelength = sequencelength
+        self.corrected = corrected
+        self.daily_timestamps = daily_timestamps 
+        if self.daily_timestamps: 
+            self.sequencelength = 365
+        else: 
+            self.sequencelength = sequencelength
         self.return_id = return_id
         self.class_weights = None
+        self.nclasses = len(self.labels_names)
 
     def __len__(self):
         return len(self.ds)
@@ -46,20 +95,33 @@ class BreizhCrops(Dataset):
         # get length of this sample
         t = X.shape[0]
 
-
-        if t < self.sequencelength:
-            # time series shorter than "sequencelength" will be zero-padded
-            npad = self.sequencelength - t
-            X = np.pad(X, [(0, npad), (0, 0)], 'constant', constant_values=0)
-        elif t > self.sequencelength:
-            # time series longer than "sequencelength" will be sub-sampled
-            idxs = np.random.choice(t, self.sequencelength, replace=False)
-            idxs.sort()
-            X = X[idxs]
+        if self.corrected and self.daily_timestamps:
+            # in this case the sequences are either of length 51 or 102.
+            if t==51:
+                doys = APPROXIMATED_DOY_51
+            elif t==102:
+                doys = APPROXIMATED_DOY_102
+            else:
+                raise ValueError(f"Sequence length {t} not recognized")
+            # change the length of X to be 365, and pad with zeros
+            X_ = np.zeros((365, X.shape[1]))
+            X_[doys] = X
+            X = X_
+            t = 365
+        else: 
+            if t < self.sequencelength:
+                # time series shorter than "sequencelength" will be zero-padded
+                npad = self.sequencelength - t
+                X = np.pad(X, [(0, npad), (0, 0)], 'constant', constant_values=0)
+            elif t > self.sequencelength:
+                # time series longer than "sequencelength" will be sub-sampled
+                idxs = np.random.choice(t, self.sequencelength, replace=False)
+                idxs.sort()
+                X = X[idxs]
 
         X = torch.from_numpy(X).type(torch.FloatTensor)
 
-        X,y  = X, y.repeat(self.sequencelength)
+        X, y = X, y.repeat(self.sequencelength)
         if self.return_id:
             return X, y, id
         else:
@@ -84,7 +146,7 @@ class BreizhCrops(Dataset):
         The class with the smallest count will have weight 1, others will have a weight < 1
         """
         if self.class_weights is None:
-            class_counts = torch.zeros(len(LABELS_NAMES))
+            class_counts = torch.zeros(self.nclasses)
             for i in range(len(self.ds)):
                 _, y, _ = self.ds[i]
                 class_counts[y] += 1
@@ -136,6 +198,7 @@ class BzhBreizhCrops(Dataset):
                  recompile_h5_from_csv=False,
                  preload_ram=False,
                  corrected=False,
+                 original_time_serie_lengths=[51, 102],
                  ):
         """
         :param region: dataset region. choose from "frh01", "frh02", "frh03", "frh04", "belle-ile"
@@ -194,18 +257,15 @@ class BzhBreizhCrops(Dataset):
             self.write_h5_database_from_csv(self.index)
         if not h5_database_ok and not recompile_h5_from_csv and load_timeseries:
             self.download_h5_database()
-
-        if self.corrected and self.level=="L1C":
-            # create a file with only 51 and 102 length time series
-            df = pd.read_csv(self.indexfile, index_col=None)
-            df  = df[df["sequencelength"].isin([51, 102])]
-            self.indexfile = self.indexfile.replace(".csv", "_corrected.csv")
-            df.to_csv(self.indexfile, index=False)
             
+        self.correct_sequence_length(original_time_serie_lengths)
+    
         self.index = pd.read_csv(self.indexfile, index_col=None)
         self.index = self.index.loc[self.index["CODE_CULTU"].isin(self.mapping.index)]
         if verbose:
             print(f"kept {len(self.index)} time series references from applying class mapping")
+            
+        self.set_labels_names() 
 
         # filter zero-length time series
         if self.index.index.name != "idx":
@@ -233,7 +293,6 @@ class BzhBreizhCrops(Dataset):
             self.index[["classid", "classname"]] = self.index["CODE_CULTU"].apply(lambda code: self.mapping.loc[code])
             self.index["region"] = self.region
             self.index.to_csv(self.indexfile)
-
         self.get_codes()
 
     def download_csv_files(self):
@@ -436,6 +495,34 @@ class BzhBreizhCrops(Dataset):
 
         self.index = pd.DataFrame(listcsv_statistics)
         self.index.to_csv(self.indexfile)
+        
+    def correct_sequence_length(self, original_time_serie_lengths):
+        """
+        if corrected is True, only time series with lengths in "original_time_serie_lengths" will be kept.
+        Moreover, small classes (nuts and sunflowers) are removed. 
+        To take the previous change into account, target_transform is updated to update the labels. 
+        """
+        if self.corrected and self.level=="L1C":
+            # create a file with only 51 and 102 length time series
+            df = pd.read_csv(self.indexfile, index_col=None)
+            df = df[df["sequencelength"].isin(original_time_serie_lengths)]
+            # remove the small classes: classnames nuts and sunflowers
+            df = df[~df['classid'].isin([6, 4])]
+            # change the classid from 0 to 7, after removing 4 and 6, knowing that the classes were from 0 to 9. 
+            dict_new_classid = {0: 0, 1: 1, 2: 2, 3: 3, 5: 4, 7: 5, 8: 6}
+            df['classid'] = df['classid'].replace(dict_new_classid)
+            self.indexfile = self.indexfile.replace(".csv", "_corrected.csv")
+            assert df['classid'].nunique() == 7
+            df.to_csv(self.indexfile, index=False)
+            # change self.target_transform to take into account the new classid, i.e. following dict_new_classid
+            self.target_transform = lambda y: torch.tensor(dict_new_classid[y], dtype=torch.long)
+
+    def set_labels_names(self):
+        unique_samples_classnames = self.index[['classname', 'classid']].drop_duplicates()
+        # Sort by 'classid'
+        sorted_samples = unique_samples_classnames.sort_values(by='classid')
+        # Keep only the 'classname' column
+        self.labels_names = sorted_samples['classname'].values
 
 
 def get_default_transform(level):
