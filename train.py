@@ -8,7 +8,7 @@ from utils.train.helpers_training import get_run_config
     
 if __name__ == '__main__':
     # example usage: 
-    # python train.py --configpath config/best_model_config.yaml
+    # python train.py --configpath config/best_model_config.json
     run_config = get_run_config()
     personal_config = load_personal_config(os.path.join("config", "personal_config.yaml"))
     
