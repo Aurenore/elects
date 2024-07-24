@@ -346,7 +346,7 @@ def plots_all_figs_at_test(args, stats, model_path, run_config, class_names, ncl
     fig_normalized.savefig(fig_filename)
     print("fig saved at ", fig_filename)
 
-    if "lin_regr" in run_config.loss or run_config.loss == "daily_reward":
+    if "lin_regr" in run_config.loss:
         fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
         fig_timestamps, _ = plot_timestamps_left_per_class(fig_timestamps, ax_timestamps, stats, nclasses, class_names, mus, ylim=args.sequencelength, epoch=run_config.epochs)
         fig_filename = os.path.join(model_path, "timestamps_left_per_class.png")

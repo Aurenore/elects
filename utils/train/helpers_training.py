@@ -360,18 +360,10 @@ def update_dict_result_epoch(dict_results_epoch, stats, config, epoch, trainloss
         "trainloss": trainloss,
         "testloss": testloss,                    
     })
-    if config.loss == "stopping_time_proximity":
-        dict_results_epoch.update({
-            "proximity_reward": stats["proximity_reward"].mean(),
-            "wrong_pred_penalty": stats["wrong_pred_penalty"].mean(),
-            })
-    if "lin_regr" in config.loss: 
+    if config.loss == "daily_reward_piecewise_lin_regr":
         dict_results_epoch.update({
             "lin_regr_zt_loss": stats["lin_regr_zt_loss"].mean(),
             "alphas": criterion.alphas.cpu().detach().numpy(),
-            })        
-    if config.loss == "daily_reward_piecewise_lin_regr":
-        dict_results_epoch.update({
             "wrong_pred_penalty": stats["wrong_pred_penalty"].mean(),
             })
     return dict_results_epoch
@@ -455,13 +447,6 @@ def plots_during_training(epoch, stats, config, dict_results_epoch, class_names,
         fig_boxplot, _ = boxplot_stopping_times(doys_stop, stats, fig_boxplot, ax_boxplot, class_names, epoch=epoch)
         dict_results_epoch["boxplot"] = wandb.Image(fig_boxplot)
         plt.close(fig_boxplot)
-        
-        # plot the timestamps left if config loss contains "daily_reward"
-        if config.loss=="daily_reward":
-            fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))
-            fig_timestamps, _ = plot_timestamps_left(stats, ax_timestamps, fig_timestamps, epoch=epoch)
-            dict_results_epoch["timestamps_left_plot"] = wandb.Image(fig_timestamps)
-            plt.close(fig_timestamps)
         
         if "lin_regr" in config.loss:
             fig_timestamps, ax_timestamps = plt.subplots(figsize=(15, 7))

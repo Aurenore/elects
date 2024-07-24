@@ -46,10 +46,6 @@ class TestMus():
         for epoch in range(1, 100):
             assert mus_should_be_updated(config, epoch, freq_update=5) == (epoch>=config.start_decision_head_training and epoch%5==0)
         
-        config.loss = "daily_reward_lin_regr"
-        for epoch in range(1, 100):
-            assert mus_should_be_updated(config, epoch, freq_update=5) == (epoch>=config.start_decision_head_training and epoch%5==0)
-        
         config.loss = ""
         for epoch in range(1, 100):
             assert mus_should_be_updated(config, epoch, freq_update=5) == False 
