@@ -1,4 +1,6 @@
+
 import argparse
+import json
 import sys
 import os 
 os.environ['MPLCONFIGDIR'] = '/myhome'
@@ -24,68 +26,21 @@ from utils.metrics import harmonic_mean_score, get_std_score
 from models.model_helpers import count_parameters
 import matplotlib.pyplot as plt
 
+def get_run_config():
+    """ get the configuration path"""
+    parser = argparse.ArgumentParser(description='Training configuration for D-ELECTS')
+    parser.add_argument('--configpath', type=str, help='path to the config file, in json format', default=None)
+    config_file_path = parser.parse_args().configpath
+    # load config file, in json format 
+    if config_file_path is not None:
+        # open the json file and load the configuration
+        with open(config_file_path, 'r') as f:
+            run_config = json.load(f)
+        print(run_config)
+    else:
+        ValueError("Please provide a config file")
+    return run_config
 
-def parse_args():
-    """ Parse the arguments from the command line
-    """
-    def int_list(value):
-        # This function will split the string by commas and convert each to an integer
-        return [int(i.strip()) for i in value.split(',')]
-    
-    def float_list(value):
-        # This function will split the string by commas and convert each to a float
-        return [float(i.strip()) for i in value.split(',')]
-    
-    def str2bool(v):
-        if isinstance(v, bool):
-            return v
-        if v.lower() in ('yes', 'true', 't', 'y', '1'):
-            return True
-        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-            return False
-        else:
-            raise argparse.ArgumentTypeError('Boolean value expected.')
-        
-    parser = argparse.ArgumentParser(description='Training configuration for ELECTS.')
-    
-    # Arguments from YAML with default values specified
-    parser.add_argument('--backbonemodel', type=str, default="LSTM", help="backbone model")
-    parser.add_argument('--dataset', type=str, default="breizhcrops", help="dataset")
-    parser.add_argument('--epsilon', type=float, default=10, help="additive smoothing parameter")
-    parser.add_argument('--learning-rate', type=float, default=0.001, help="Optimizer learning rate")
-    parser.add_argument('--weight-decay', type=float, default=0, help="weight decay")
-    parser.add_argument('--patience', type=int, default=30, help="Early stopping patience")
-    parser.add_argument('--device', type=str, default="cuda", help="Compute device")
-    parser.add_argument('--epochs', type=int, default=100, help="number of training epochs")
-    parser.add_argument('--hidden-dims', type=int, default=64, help="number of hidden dimensions in the backbone model")
-    parser.add_argument('--batchsize', type=int, default=256, help="batch size")
-    parser.add_argument('--dataroot', type=str, default="/home/amauron/elects/data/elects_data", help="root directory for dataset")
-    parser.add_argument('--snapshot', type=str, default="/home/amauron/elects/data/elects_snapshots/model.pth", help="snapshot file path")
-    parser.add_argument('--sequencelength', type=int, default=70, help="sequence length for time series")
-    parser.add_argument('--loss', type=str, default="early_reward", help="daily_reward_lin_regr")
-    parser.add_argument('--decision-head', type=str, default="day", help="decision head type")	
-    parser.add_argument('--loss-weight', type=str, default="balanced", help="loss weight type")
-    parser.add_argument('--alpha', type=float, default=1.0, help="alpha value for adjustments")
-    parser.add_argument('--resume', action='store_true', default=False, help="Resume training from last checkpoint")
-    parser.add_argument('--validation-set', type=str, default="valid", help="validation set identifier")
-    parser.add_argument('--corrected', type=str2bool, default=False, help="whether the dataset is corrected")
-    parser.add_argument('--daily-timestamps', type=str2bool, default=False, help="include daily timestamps")
-    parser.add_argument('--original-time-serie-lengths', type=int_list, default="102", help="original lengths of time series")
-    parser.add_argument('--day-head-init-bias', type=int, default=5, help="initial bias for day head")
-    parser.add_argument('--alpha-decay', type=float_list, default=[1.0, 0.6], help="alpha decay rates")
-    parser.add_argument('--start-decision-head-training', type=int, default=2, help="start point for decision head training")
-    parser.add_argument('--percentage-earliness-reward', type=float, default=0.3, help="percentage for earliness reward")
-    parser.add_argument('--p-thresh', type=float, default=0.5, help="probability threshold")
-    parser.add_argument('--factor', type=str, default='v1', help="wrong prediction penalty factor")
-    parser.add_argument('--percentages-other-alphas', type=float_list, default=None, help="percentages for other alphas")
-    
-
-    args = parser.parse_args()
-
-    if args.patience < 0:
-        args.patience = None
-
-    return args
 
 def train_epoch(model, dataloader, optimizer, criterion, device, **kwargs):
     """ Train the model for one epoch

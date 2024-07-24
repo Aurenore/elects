@@ -6,7 +6,7 @@
 import os 
 os.environ['MPLCONFIGDIR'] = '/myhome'
 from utils.plots import plot_label_distribution_datasets
-from utils.helpers_config import load_personal_config, set_up_config, save_config, print_config
+from utils.helpers_config import load_personal_wandb_config, set_up_config, save_config, print_config
 from utils.test.helpers_testing import get_test_stats_from_model, load_test_dataset, save_test_stats
 from utils.plots_test import plots_all_figs_at_test
 import matplotlib.pyplot as plt
@@ -20,7 +20,7 @@ def main(run_name, sequencelength_test, plot_label_distribution=False, partition
     print(f"Test the model from run '{run_name}' on the {partition} dataset")
 
     # ## Download the model from wandb 
-    entity, project, _ = load_personal_config(os.path.join("config", "personal_config.yaml"))
+    entity, project, _ = load_personal_wandb_config(os.path.join("config", "personal_config.yaml"))
     runs_df, runs = get_all_runs(entity, project)
 
     # get the run with name:

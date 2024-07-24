@@ -1,19 +1,15 @@
 """ train on the train and validation sets"""
 import sys
 import os 
-#os.environ['MPLCONFIGDIR'] = "$HOME"
-#os.environ["WANDB_DIR"] = os.path.join(os.path.dirname(__file__), "..", "wandb")
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import wandb
 from tqdm import tqdm
 import pandas as pd
-from utils.train.helpers_training import train_epoch, set_up_model, set_up_optimizer, set_up_class_weights, \
+from utils.train.helpers_training import get_run_config, train_epoch, set_up_model, set_up_optimizer, set_up_class_weights, \
     set_up_criterion, set_up_resume, get_all_metrics, log_description, plots_during_training, load_dataset, \
     save_model_artifact, plot_label_distribution_in_training 
-from utils.helpers_config import set_up_config
+from utils.helpers_config import set_up_config, load_personal_config
 from utils.test.helpers_testing import test_epoch
-import argparse
-import json
 
 def main(config):
     partition="final_train"
@@ -61,19 +57,14 @@ def main(config):
     print("training finished.")
     wandb.finish()
     
-
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config-path", type=str, help="path to the config file")
-    args = parser.parse_args()
-    config_path = args.config_path
-    with open(config_path, "r") as f:
-        config = json.load(f)
+    run_config = get_run_config()
+    personal_config = load_personal_config(os.path.join("config", "personal_config.yaml"))
     wandb.init(
-        dir="/mydata/studentanya/anya/wandb/",
-        project="MasterThesis",
+        dir=personal_config["wandb_dir"],
+        project=personal_config["project"],
         tags=["D-ELECTS", "final train on both train and validation sets"],
-        config=config
+        config=run_config
     )
     config = wandb.config
     print(config)

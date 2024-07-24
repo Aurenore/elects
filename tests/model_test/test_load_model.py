@@ -5,11 +5,11 @@ import torch
 parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(parent_dir)
 from utils.test.load_model import get_all_runs, get_best_run, download_model, get_model_and_model_path, get_loaded_model_and_criterion
-from utils.helpers_config import load_personal_config
+from utils.helpers_config import load_personal_wandb_config
 
 class TestLoadModel():     
     def test_get_all_runs(self):
-        entity, project, _ = load_personal_config(os.path.join(parent_dir, "config", "personal_config.yaml"))
+        entity, project, _ = load_personal_wandb_config(os.path.join(parent_dir, "config", "personal_config.yaml"))
         runs_df, runs = get_all_runs(entity, project)
         assert len(runs_df) > 0 
         assert len(runs_df) <= len(runs)
@@ -23,7 +23,7 @@ class TestLoadModel():
         assert all([config.get("backbonemodel", None) != "TempCNN" for config in runs_df.config])
         
     def test_get_best_run(self):
-        entity, project, _ = load_personal_config(os.path.join(parent_dir, "config", "personal_config.yaml"))
+        entity, project, _ = load_personal_wandb_config(os.path.join(parent_dir, "config", "personal_config.yaml"))
         runs_df, runs = get_all_runs(entity, project)
         metric = "harmonic_mean"
         chosen_run = get_best_run(runs_df, runs, metric)
@@ -39,7 +39,7 @@ class TestLoadModel():
             raise ValueError("No valid metric values found for 'harmonic_mean'.")
             
     def test_download_model(self):
-        entity, project, _ = load_personal_config(os.path.join(parent_dir, "config", "personal_config.yaml"))
+        entity, project, _ = load_personal_wandb_config(os.path.join(parent_dir, "config", "personal_config.yaml"))
         runs_df, runs = get_all_runs(entity, project)
         metric = "harmonic_mean"
         chosen_run = get_best_run(runs_df, runs, metric)
@@ -52,7 +52,7 @@ class TestLoadModel():
         assert os.path.getsize(os.path.join(model_path, "args.json")) > 0 
         
     def test_get_model_and_model_path(self):
-        entity, project, _ = load_personal_config(os.path.join(parent_dir, "config", "personal_config.yaml"))
+        entity, project, _ = load_personal_wandb_config(os.path.join(parent_dir, "config", "personal_config.yaml"))
         runs_df, runs = get_all_runs(entity, project)
         metric = "harmonic_mean"
         chosen_run = get_best_run(runs_df, runs, metric)
@@ -64,7 +64,7 @@ class TestLoadModel():
         assert os.path.exists(os.path.join(model_path, "model.pth"))
         
     def test_get_loaded_model_and_criterion(self):
-        entity, project, _ = load_personal_config(os.path.join(parent_dir, "config", "personal_config.yaml"))
+        entity, project, _ = load_personal_wandb_config(os.path.join(parent_dir, "config", "personal_config.yaml"))
         runs_df, runs = get_all_runs(entity, project)
         metric = "harmonic_mean"
         chosen_run = get_best_run(runs_df, runs, metric)

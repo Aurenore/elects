@@ -4,10 +4,15 @@ import json
 import wandb
 from yaml import safe_load 
 
-def load_personal_config(path = os.path.join("..", "config", "personal_config.yaml")):
+def load_personal_config(path:str = os.path.join("..", "config", "personal_config.yaml")):
     """ load the personal config in config/personal_config.yaml"""
     with open(path, 'r') as file:
         config = safe_load(file)
+    return config
+
+def load_personal_wandb_config(path:str = os.path.join("..", "config", "personal_config.yaml")):
+    """ load the personal wandb information in config/personal_config.yaml"""
+    config = load_personal_config(path)
     entity = config["entity"]
     project = config["project"]
     sweep = config["sweep"]
