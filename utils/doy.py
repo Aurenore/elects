@@ -11,7 +11,14 @@ def get_doys_dict_test(dataroot:str, npydoy: str='breizhcrops_frh04_2017_doys.np
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, 'wb') as f:
             f.write(response.content)
-    doys_dict = np.load(filepath, allow_pickle=True).flat[0]
+    
+    try:
+        doys_dict = np.load(filepath, allow_pickle=True).flat[0]
+    except:
+        print("Error while loading the doys_dict, retrying to download the file")
+        os.remove(filepath)
+        return get_doys_dict_test(dataroot, npydoy)
+    
     return doys_dict
 
 def get_doy_stop(stats, doys_dict, t_stop_key="t_stop", approximated=True):
