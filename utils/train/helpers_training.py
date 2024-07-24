@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 def get_run_config():
     """ get the configuration path"""
     parser = argparse.ArgumentParser(description='Training configuration for D-ELECTS')
-    parser.add_argument('--configpath', type=str, help='path to the config file, in json format', default=None)
+    parser.add_argument('--configpath', type=str, help='path to the config file, in json format', default=None, required=True)
     config_file_path = parser.parse_args().configpath
     # load config file, in json format 
     if config_file_path is not None:
