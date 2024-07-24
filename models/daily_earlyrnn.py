@@ -1,12 +1,8 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.utils.data
-import os
-from torch.nn.modules.normalization import LayerNorm
 from models.model_helpers import get_backbone_model, get_t_stop_from_daily_timestamps
 from models.heads import ClassificationHead, DecisionHeadDay
-
 
 
 class DailyEarlyRNN(nn.Module):

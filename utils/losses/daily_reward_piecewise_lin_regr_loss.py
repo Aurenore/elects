@@ -2,10 +2,12 @@ import torch
 from torch import nn
 from utils.losses.loss_helpers import probability_correct_class, probability_wrong_class, \
     log_class_prob_at_t_plus_zt
-from utils.losses.daily_reward_lin_regr_loss import DailyRewardLinRegrLoss, lin_regr_zt
 from utils.random_numbers import sample_three_uniform_numbers
 
-class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
+MU_DEFAULT = 150.
+NB_DAYS_IN_YEAR = 365.
+
+class DailyRewardPiecewiseLinRegrLoss(nn.Module):
     def __init__(self, alpha:float=1., weight=None, alpha_decay: list=None, epochs: int=100, start_decision_head_training: int=0, factor: str="v1", **kwargs):
         """ instantiate the loss function for the daily reward with a piecewise linear regression loss. 
             alpha_1*classification_loss - alpha_2*earliness_reward - alphas_3*wrong_pred_penalty + alpha_4*lin_regr_zt_loss
@@ -24,10 +26,28 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
                 - "v1": (z_t/T)*(1-t/T)
                 - "v2": (t + z_t)/T
         """
+        super(DailyRewardPiecewiseLinRegrLoss, self).__init__()
         assert factor in ["v1", "v2"], f"factor {factor} not implemented"
-        super(DailyRewardPiecewiseLinRegrLoss, self).__init__(alpha=alpha, weight=weight, alpha_decay=alpha_decay, epochs=epochs, start_decision_head_training=start_decision_head_training, **kwargs)
         self.factor = factor
-        if ("percentages_other_alphas" in kwargs) and ( kwargs["percentages_other_alphas"] is not None):
+        
+        self.weight = weight
+        self.negative_log_likelihood = nn.NLLLoss(reduction="none", weight=self.weight)
+        self.alpha = alpha
+        
+        if alpha_decay is not None:
+            self.alpha_decay_max = alpha_decay[0]
+            self.alpha_decay_min = alpha_decay[1]
+            self.epochs = epochs
+        
+        self.start_decision_head_training = start_decision_head_training
+        
+        # mus is a tensor of length nclasses, containing the mu for each class
+        self.mu = kwargs.get("sequencelength", NB_DAYS_IN_YEAR)*MU_DEFAULT/NB_DAYS_IN_YEAR
+        self.mus = kwargs.get("mus", torch.ones(len(weight))*self.mu).to(weight.device)
+        self.percentage_earliness_reward = torch.tensor(kwargs.get("percentage_earliness_reward", 0.5), device=weight.device)
+        
+        # initialize the percentages of alpha_2, alpha_3 and alpha_4
+        if ("percentages_other_alphas" in kwargs) and (kwargs["percentages_other_alphas"] is not None):
             if len(kwargs["percentages_other_alphas"]) != 3:
                 raise ValueError("percentages_other_alphas should have length 3.")
             if not torch.isclose(torch.tensor(kwargs["percentages_other_alphas"]).sum(), torch.tensor(1.)):
@@ -37,13 +57,15 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
             self.percentages_other_alphas = sample_three_uniform_numbers()
         if not isinstance(self.percentages_other_alphas, torch.Tensor):
             self.percentages_other_alphas = torch.tensor(self.percentages_other_alphas, device=self.weight.device)
+        
+        # update alphas with the given alpha and the percentages of the other alphas
         self.alphas = self.update_alphas(self.alpha, weight.device)
         
     def forward(self, log_class_probabilities, timestamps_left, y_true, return_stats=False, **kwargs):
         N, T, C = log_class_probabilities.shape
         epoch = kwargs.get("epoch", 0)
 
-        # equation 4, right term
+        # log(yhat_{t+z_t})
         t = torch.ones(N, T, device=log_class_probabilities.device) * \
                 torch.arange(T).type(torch.FloatTensor).to(log_class_probabilities.device)
         log_class_probabilities_at_t_plus_zt = log_class_prob_at_t_plus_zt(log_class_probabilities, timestamps_left)
@@ -53,11 +75,14 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
                             
         # earliness reward, wrong prediction penalty and piecewise linear regression loss
         if epoch>=self.start_decision_head_training and self.alpha<1.-1e-8:
+            # equation (8)
             earliness_reward = probability_correct_class(log_class_probabilities_at_t_plus_zt, y_true, weight=self.weight) * (1-t/T) * (1-timestamps_left.float()/T)
             earliness_reward = earliness_reward.sum(1).mean(0)
             
+            # equation (9) if "v1", or (10) if "v2"
             wrong_pred_penalty = self.compute_wrong_prediction_penalty(log_class_probabilities_at_t_plus_zt, timestamps_left, y_true, t, T)
             
+            # equation (11)
             lin_regr_zt_loss = lin_regr_zt(t, T, self.mus, timestamps_left.float(), y_true) # (N, T)
             lin_regr_zt_loss = lin_regr_zt_loss.sum(1).mean(0) # sum over time, mean over batch
         else:
@@ -66,11 +91,11 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
             wrong_pred_penalty = torch.tensor(0.0, device=log_class_probabilities.device)
             lin_regr_zt_loss = torch.tensor(0.0, device=log_class_probabilities.device)
             
-        # classification loss
+        # classification loss, equation (7)
         cross_entropy = self.negative_log_likelihood(log_class_probabilities.view(N*T,C), y_true.view(N*T)).view(N,T)
         classification_loss = cross_entropy.sum(1).mean(0)
 
-        # final loss
+        # final loss, equation (12)
         loss = self.alphas[0]*classification_loss - self.alphas[1]*earliness_reward + self.alphas[2]*wrong_pred_penalty + self.alphas[3]*lin_regr_zt_loss
 
         if return_stats:
@@ -147,4 +172,24 @@ class DailyRewardPiecewiseLinRegrLoss(DailyRewardLinRegrLoss):
         alphas = torch.tensor([alpha, *self.percentages_other_alphas*(1.-alpha)], device=self.weight.device)
         assert torch.isclose(alphas.sum(), torch.tensor(1., device=device)), "Alphas should sum to 1."
         return alphas 
+    
+    def update_mus(self, mus):
+        self.mus = mus.clone().detach().to(device=self.mus.device)
         
+
+def lin_regr_zt(t, T, mus, z_t, y_true):
+    """ computes the piecewise linear regression loss for z_t
+    
+    INPUT:
+    t: tensor of shape (N, T)
+    T: float 
+    mus: tensor of shape (C)
+    z_t: tensor of shape (N, T)
+    y_true: tensor of shape (N, T)
+    
+    OUTPUT: 
+    loss: tensor of shape (N, T), 
+    """
+    # lin_term is either mus[y_true]-t-z_t for t<=mus[y_true], or z_t otherwise
+    lin_term = torch.where(t<=mus[y_true], mus[y_true]-t-z_t, z_t)
+    return (lin_term/T)**2

@@ -29,7 +29,7 @@ def extract_mu_thresh(class_prob, y_true, p_tresh, mu_default):
 
 def mus_should_be_updated(config, epoch, freq_update=5):
     """ checks if the mus should be updated, depending on the loss function and the epoch. 
-        mus should be updated for the daily_reward_lin_regr_loss, starting from the start_decision_head_training epoch, and every 5 epochs.
+        mus should be updated for the daily_reward_piecewise_lin_regr_loss, starting from the start_decision_head_training epoch, and every 5 epochs.
     
     Args:
         config (wandb.config): configuration of the run
@@ -51,8 +51,8 @@ def update_mus_during_training(config, criterion, stats, epoch, mus, mu_default)
         criterion: the criterion
         stats: the statistics
         epoch (int): current epoch
-        mus: mus for the daily_reward_lin_regr_loss
-        mu_default: default mu for the daily_reward_lin_regr_loss
+        mus: mus for the daily_reward_piecewise_lin_regr_loss
+        mu_default: default mu for the daily_reward_piecewise_lin_regr_loss
     Returns:
         mus: updated mus
     """

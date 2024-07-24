@@ -126,7 +126,7 @@ class TestDailyRewardPiecewiseLinRegrLoss():
                     assert isinstance(stats, dict), "Stats should be a dictionary."
                     assert "wrong_pred_penalty" in stats, "Stats should contain wrong_pred_penalty."
                     assert isinstance(stats["wrong_pred_penalty"], (np.ndarray, torch.Tensor)), "Wrong pred penalty should be an array."
-                    assert sum(criterion.alphas) == 1, "Alphas should sum to 1."
+                    assert torch.isclose(sum(criterion.alphas), torch.tensor(1.0, device=criterion.alphas.device), atol=1e-6), "Alphas should sum to 1."
                     break
                 break
         torch.autograd.set_detect_anomaly(False)

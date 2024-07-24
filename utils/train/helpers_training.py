@@ -13,11 +13,8 @@ from torch.utils.data import DataLoader
 from models.earlyrnn import EarlyRNN
 from models.daily_earlyrnn import DailyEarlyRNN
 import torch
-from utils.losses.daily_reward_piecewise_lin_regr_loss import DailyRewardPiecewiseLinRegrLoss
+from utils.losses.daily_reward_piecewise_lin_regr_loss import DailyRewardPiecewiseLinRegrLoss, MU_DEFAULT, NB_DAYS_IN_YEAR
 from utils.losses.early_reward_loss import EarlyRewardLoss
-from utils.losses.stopping_time_proximity_loss import StoppingTimeProximityLoss
-from utils.losses.daily_reward_loss import DailyRewardLoss
-from utils.losses.daily_reward_lin_regr_loss import DailyRewardLinRegrLoss, MU_DEFAULT, NB_DAYS_IN_YEAR
 import sklearn.metrics
 from utils.plots import plot_label_distribution_datasets, boxplot_stopping_times, plot_timestamps_left, \
     plot_timestamps_left_per_class, create_figure_and_axes
@@ -233,12 +230,12 @@ def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None, wa
         config (wandb.config): configuration of the run
         class_weights: class weights
         nclasses (int): number of classes
-        mus: mus for the daily_reward_lin_regr_loss
+        mus: mus for the daily_reward_piecewise_lin_regr_loss
     
     Returns:
         criterion: the criterion
-        mus: mus for the daily_reward_lin_regr_loss
-        mu: mu for the daily_reward_lin_regr_loss
+        mus: mus for the daily_reward_piecewise_lin_regr_loss
+        mu: mu for the daily_reward_piecewise_lin_regr_loss
     """
     # define mus if necessary
     mu = None
@@ -253,19 +250,6 @@ def set_up_criterion(config, class_weights, nclasses, mus: torch.tensor=None, wa
             
     if config.loss == "early_reward":
         criterion = EarlyRewardLoss(alpha=config.alpha, epsilon=config.epsilon, weight=class_weights)
-    elif config.loss == "stopping_time_proximity":
-        alpha4 = 1-config.alpha1-config.alpha2-config.alpha3
-        config.update({"alpha4": alpha4})
-        criterion = StoppingTimeProximityLoss(alphas=[config.alpha1, config.alpha2, config.alpha3, config.alpha4], weight=class_weights)
-    elif config.loss == "daily_reward":
-        criterion = DailyRewardLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs,\
-            start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0)
-    elif config.loss == "daily_reward_lin_regr":
-        dict_criterion = {"mus": mus, \
-                "percentage_earliness_reward": config.percentage_earliness_reward if hasattr(config, "percentage_earliness_reward") else 0.9,}
-        criterion = DailyRewardLinRegrLoss(alpha=config.alpha, weight=class_weights, alpha_decay=config.alpha_decay, epochs=config.epochs, \
-            start_decision_head_training=config.start_decision_head_training if hasattr(config, "start_decision_head_training") else 0, \
-            **dict_criterion)
     elif config.loss == "daily_reward_piecewise_lin_regr":
         dict_criterion = {"mus": mus,
                         "percentages_other_alphas": config.percentages_other_alphas if hasattr(config, "percentages_other_alphas") else None}
@@ -402,7 +386,7 @@ def second_update_dict_result_epoch(dict_results_epoch, stats, trainloss, testlo
         testloss: the test loss
         criterion: the criterion
         class_names: the class names
-        mus: the mus for the daily_reward_lin_regr_loss
+        mus: the mus for the daily_reward_piecewise_lin_regr_loss
     
     Returns:
         dict_results_epoch: the updated dictionary
@@ -428,7 +412,7 @@ def get_all_metrics(stats, config, epoch, train_stats, trainloss, testloss, crit
         testloss: the test loss
         criterion: the criterion
         class_names: the class names
-        mus: the mus for the daily_reward_lin_regr_loss
+        mus: the mus for the daily_reward_piecewise_lin_regr_loss
         
     Returns: 
         dict_results_epoch: the updated dictionary for wandb
@@ -445,7 +429,7 @@ def get_all_metrics(stats, config, epoch, train_stats, trainloss, testloss, crit
 def plots_during_training(epoch, stats, config, dict_results_epoch, class_names, length_sorted_doy_dict_test, mus, nclasses, sequencelength):
     """ plots the boxplot of the stopping times, every 5 epochs. 
         For the daily_reward loss, also plots the timestamps left.
-        For the daily_reward_lin_regr_loss, also plots the timestamps left (for each class) and the class probabilities wrt time.
+        For the daily_reward_piecewise_lin_regr_loss, also plots the timestamps left (for each class) and the class probabilities wrt time.
         
     Args:
         epoch: the epoch
@@ -454,7 +438,7 @@ def plots_during_training(epoch, stats, config, dict_results_epoch, class_names,
         dict_results_epoch: the dictionary for wandb
         class_names: the class names
         length_sorted_doy_dict_test: the sorted doys dictionary
-        mus: the mus for the daily_reward_lin_regr_loss
+        mus: the mus for the daily_reward_piecewise_lin_regr_loss
         nclasses: the number of classes
         sequencelength: the sequence length
     
