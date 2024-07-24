@@ -6,6 +6,7 @@ from models.heads import ClassificationHead, DecisionHeadDay
 
 
 class DailyEarlyRNN(nn.Module):
+    """ D-ELECTS model """
     def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, day_head_init_bias: float=None, **kwargs):
         super(DailyEarlyRNN, self).__init__()
         # input transformations

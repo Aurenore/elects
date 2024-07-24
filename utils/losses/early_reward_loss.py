@@ -3,6 +3,7 @@ from torch import nn
 from utils.losses.loss_helpers import probability_correct_class
 
 class EarlyRewardLoss(nn.Module):
+    """ ELECTS loss function"""
     def __init__(self, alpha=0.5, epsilon=10, weight=None):
         super(EarlyRewardLoss, self).__init__()
 

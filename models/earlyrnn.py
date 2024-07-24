@@ -7,6 +7,7 @@ from models.heads import ClassificationHead, DecisionHead
 
 
 class EarlyRNN(nn.Module):
+    """ ELECTS model """
     def __init__(self, backbone_model:str="LSTM", input_dim:int=13, hidden_dims:int=64, nclasses:int=7, num_rnn_layers:int=2, dropout:float=0.2, sequencelength:int=70, kernel_size:int=7):
         super(EarlyRNN, self).__init__()
         # input transformations

@@ -82,7 +82,7 @@ if __name__ == "__main__":
     parser.add_argument("--run-name", type=str, help="name of the run to test")
     parser.add_argument("--sequencelength-test", type=int, help="sequence length of the test dataset", default=None)
     parser.add_argument("--plot-label-distribution", type=bool, help="plot the label distribution", default=False)
-    parser.add_argument("--dataroot", type=str, help="local dataroot", default='default')
+    parser.add_argument("--dataroot", type=str, help="local dataroot", default='default, which is os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")')
     parser.add_argument("--partition", type=str, help="partition to test on", default='eval')
     args = parser.parse_args()
     run_name = args.run_name

@@ -9,7 +9,7 @@ NB_DAYS_IN_YEAR = 365.
 
 class DailyRewardPiecewiseLinRegrLoss(nn.Module):
     def __init__(self, alpha:float=1., weight=None, alpha_decay: list=None, epochs: int=100, start_decision_head_training: int=0, factor: str="v1", **kwargs):
-        """ instantiate the loss function for the daily reward with a piecewise linear regression loss. 
+        """ instantiate D-ELECTS cost function. 
             alpha_1*classification_loss - alpha_2*earliness_reward - alphas_3*wrong_pred_penalty + alpha_4*lin_regr_zt_loss
             alpha_1 + alpha_2 + alpha_3 + alpha_4 = 1
             alpha_1 decreases through the epochs, while alpha_2, alpha_3 and alpha_4 increase.
