@@ -9,6 +9,8 @@ The Readme is structured as follows:
   - [2. Dependencies](#2-dependencies)
   - [3. Train the Model](#3-train-the-model)
     - [Monitor training](#monitor-training)
+    - [Other training variants (optional)](#other-training-variants-optional)
+      - [1. Sweep Train](#1-sweep-train)
       - [2. Final Train](#2-final-train)
   - [4. Test the Model](#4-test-the-model)
   - [5. Notebooks](#5-notebooks)
@@ -44,15 +46,14 @@ project: <projectname>
 ```	
 
 ### Start training loop
-[TO COMPLETE]
-To start the training loop run
+To start a training loop run
+```bash 
+python train.py --configpath <configpath>
 ```
-❯ python train.py --
-Setting up a new session...
-epoch 100: trainloss 1.70, testloss 1.97, accuracy 0.87, earliness 0.48. classification loss 7.43, earliness reward 3.48: 100%|███| 100/100 [06:34<00:00,  3.95s/it]
-```
-The BavarianCrops dataset is automatically downloaded.
-Additional options (e.g., `--alpha`, `--epsilon`, `--batchsize`) are available with `python train.py --help`.
+where `<configpath>` is the path to the model configuration file, in json format. An example is given in [`config/best_model_config.json`](config/best_model_config.json).
+The BreizhCrops dataset is automatically downloaded. 
+
+Medias will be shown in the wandb dashboard, as the predictions stopping times, the class probabilities with respect to time, and the number of timestamps left to predict. 
 
 
 ### Other training variants (optional)
@@ -101,3 +102,6 @@ In the `notebooks` folder, you can find several notebooks to reproduce the resul
 
 ## 6. References
 > Marc Rußwurm, Nicolas Courty, Remi Emonet, Sebastien Lefévre, Devis Tuia, and Romain Tavenard (2023). End-to-End Learned Early Classification of Time Series for In-Season Crop Type Mapping. ISPRS Journal of Photogrammetry and Remote Sensing. 196. 445-456. https://doi.org/10.1016/j.isprsjprs.2022.12.016
+
+> Marc Rußwurm, Charlotte Pelletier, Maximilian Zollner, Sebastien Lefèvre, and Marco Körner. 
+Breizhcrops: A time series dataset for crop type mapping. International Archives of the Photogrammetry, Remote Sensing and Spatial Information Sciences ISPRS (2020), 2020

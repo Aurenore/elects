@@ -5,7 +5,6 @@ elects_data
 elects_environment
 *.pth
 *.csv
-*.pdf
 *.png
 *.zip
 *.npy
