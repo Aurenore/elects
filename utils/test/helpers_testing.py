@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append("..")
 from torch.utils.data import DataLoader
 from tqdm.notebook import tqdm
@@ -11,7 +12,8 @@ from data import BreizhCrops
 import os
 import json
 
-def test_epoch(model, dataloader, criterion, config, return_id:bool=False, **kwargs):
+
+def test_epoch(model, dataloader, criterion, config, return_id: bool = False, **kwargs):
     model.eval()
 
     stats = []
@@ -27,23 +29,38 @@ def test_epoch(model, dataloader, criterion, config, return_id:bool=False, **kwa
         X, y_true = X.to(config.device), y_true.to(config.device)
 
         if not config.daily_timestamps:
-            seqlengths = (X[:,:,0] != 0).sum(1)
+            seqlengths = (X[:, :, 0] != 0).sum(1)
         else:
-            seqlengths = 365*torch.ones(X.shape[0], device=config.device)
+            seqlengths = 365 * torch.ones(X.shape[0], device=config.device)
         slengths.append(seqlengths.cpu().detach())
-        
-        dict_pred = {"epoch": kwargs.get("epoch", 0), "criterion_alpha": criterion.alpha}
 
-        log_class_probabilities, stopping_criteria, predictions_at_t_stop, t_stop = model.predict(X, **dict_pred)
-        loss, stat = criterion(log_class_probabilities, stopping_criteria, y_true, return_stats=True, **kwargs)
+        dict_pred = {
+            "epoch": kwargs.get("epoch", 0),
+            "criterion_alpha": criterion.alpha,
+        }
+
+        log_class_probabilities, stopping_criteria, predictions_at_t_stop, t_stop = (
+            model.predict(X, **dict_pred)
+        )
+        loss, stat = criterion(
+            log_class_probabilities,
+            stopping_criteria,
+            y_true,
+            return_stats=True,
+            **kwargs,
+        )
         stat["loss"] = loss.cpu().detach().numpy()
         # depending of the model, we define the probability of stopping or the timestamps left as the stopping criteria
         if not config.daily_timestamps and config.loss == "early_reward":
             stat["probability_stopping"] = stopping_criteria.cpu().detach().numpy()
-        else: 
+        else:
             stat["timestamps_left"] = stopping_criteria.cpu().detach().numpy()
-        stat["class_probabilities"] = log_class_probabilities.exp().cpu().detach().numpy()
-        stat["predictions_at_t_stop"] = predictions_at_t_stop.unsqueeze(-1).cpu().detach().numpy()
+        stat["class_probabilities"] = (
+            log_class_probabilities.exp().cpu().detach().numpy()
+        )
+        stat["predictions_at_t_stop"] = (
+            predictions_at_t_stop.unsqueeze(-1).cpu().detach().numpy()
+        )
         stat["t_stop"] = t_stop.unsqueeze(-1).cpu().detach().numpy()
         stat["targets"] = y_true.cpu().detach().numpy()
         stat["ids"] = ids
@@ -54,7 +71,7 @@ def test_epoch(model, dataloader, criterion, config, return_id:bool=False, **kwa
     # list of dicts to dict of lists
     stats = {k: np.vstack([dic[k] for dic in stats]) for k in stats[0]}
     stats["seqlengths"] = torch.cat(slengths).numpy()
-    
+
     return np.stack(losses).mean(), stats
 
 
@@ -62,18 +79,27 @@ def test_dataset(model, test_ds, criterion, config, **kwargs):
     model.eval()
     with torch.no_grad():
         dataloader = DataLoader(test_ds, batch_size=config.batchsize)
-        loss, stats = test_epoch(model, dataloader, criterion, config, return_id=test_ds.return_id, **kwargs)
+        loss, stats = test_epoch(
+            model, dataloader, criterion, config, return_id=test_ds.return_id, **kwargs
+        )
     return loss, stats
 
 
 def get_test_stats(stats, testloss, args, nclasses):
-    precision, recall, fscore, support = sklearn.metrics.precision_recall_fscore_support(
-        y_pred=stats["predictions_at_t_stop"][:, 0], y_true=stats["targets"][:, 0], average="macro",
-        zero_division=0)
+    precision, recall, fscore, support = (
+        sklearn.metrics.precision_recall_fscore_support(
+            y_pred=stats["predictions_at_t_stop"][:, 0],
+            y_true=stats["targets"][:, 0],
+            average="macro",
+            zero_division=0,
+        )
+    )
     accuracy = sklearn.metrics.accuracy_score(
-                y_pred=stats["predictions_at_t_stop"][:, 0], y_true=stats["targets"][:, 0])
+        y_pred=stats["predictions_at_t_stop"][:, 0], y_true=stats["targets"][:, 0]
+    )
     kappa = sklearn.metrics.cohen_kappa_score(
-        stats["predictions_at_t_stop"][:, 0], stats["targets"][:, 0])
+        stats["predictions_at_t_stop"][:, 0], stats["targets"][:, 0]
+    )
 
     classification_loss = stats["classification_loss"].mean()
     earliness_reward = stats["earliness_reward"].mean()
@@ -97,18 +123,20 @@ def get_test_stats(stats, testloss, args, nclasses):
 
 
 def get_prob_t_stop(prob_stopping):
-    """ define a function that takes the prob of stopping and returns the output with the same shape, such as 
+    """define a function that takes the prob of stopping and returns the output with the same shape, such as
     f(d) = [d_1, d_2*(1-d_1), d_3*(1-d_1)*(1-d_2), ...] where d_i is the prob of stopping at i-th timestep
     """
     prob_t_stop = np.zeros_like(prob_stopping)
     for i in range(prob_stopping.shape[1]):
-        prob_t_stop[:, i] = np.prod(1-prob_stopping[:, :i], axis=1)*prob_stopping[:, i]
+        prob_t_stop[:, i] = (
+            np.prod(1 - prob_stopping[:, :i], axis=1) * prob_stopping[:, i]
+        )
     return prob_t_stop
 
 
 def get_test_stats_from_model(model, test_ds, criterion, config):
     args = set_up_config(config, print_comments=True)
-    kwargs={"epoch": args.epochs, "criterion_alpha": args.alpha_decay[1]}
+    kwargs = {"epoch": args.epochs, "criterion_alpha": args.alpha_decay[1]}
     testloss, stats = test_dataset(model, test_ds, criterion, args, **kwargs)
     nclasses = test_ds.nclasses
     test_stats = get_test_stats(stats, testloss, args, nclasses)
@@ -117,13 +145,20 @@ def get_test_stats_from_model(model, test_ds, criterion, config):
 
 def load_test_dataset(args, partition="eval"):
     if args.dataset == "breizhcrops":
-        dataroot = os.path.join(args.dataroot,"breizhcrops")
+        dataroot = os.path.join(args.dataroot, "breizhcrops")
         input_dim = 13
         if not hasattr(args, "preload_ram"):
             args.preload_ram = True
-        test_ds = BreizhCrops(root=dataroot, partition=partition, sequencelength=args.sequencelength, corrected=args.corrected, \
-            daily_timestamps=args.daily_timestamps, original_time_serie_lengths=args.original_time_serie_lengths, \
-            return_id=True, preload_ram=args.preload_ram)
+        test_ds = BreizhCrops(
+            root=dataroot,
+            partition=partition,
+            sequencelength=args.sequencelength,
+            corrected=args.corrected,
+            daily_timestamps=args.daily_timestamps,
+            original_time_serie_lengths=args.original_time_serie_lengths,
+            return_id=True,
+            preload_ram=args.preload_ram,
+        )
         nclasses = test_ds.nclasses
         class_names = test_ds.labels_names
         print("class names:", class_names)
@@ -133,11 +168,13 @@ def load_test_dataset(args, partition="eval"):
 
 
 class NumpyEncoder(json.JSONEncoder):
-    """ Custom encoder for numpy data types """
+    """Custom encoder for numpy data types"""
+
     def default(self, obj):
         if isinstance(obj, np.float32):
             return float(obj)
         return json.JSONEncoder.default(self, obj)
+
 
 def save_test_stats(model_path, test_stats):
     test_stats_path = os.path.join(model_path, "test_stats.json")
@@ -146,10 +183,9 @@ def save_test_stats(model_path, test_stats):
     print("test_stats saved at ", test_stats_path)
     return test_stats_path
 
+
 def load_test_stats(model_path):
     test_stats_path = os.path.join(model_path, "test_stats.json")
     with open(test_stats_path, "r") as f:
         test_stats = json.load(f)
     return test_stats
-
-

@@ -2,26 +2,37 @@ import torch
 from torch.utils.data import Dataset
 import os
 import numpy as np
+from data.approximated_doy import APPROXIMATED_DOY_51, APPROXIMATED_DOY_102
 
-LABELS_NAMES = ['barley', 'wheat', 'rapeseed', 'corn', 'sunflower', 'orchards',
-       'nuts', 'perm. mead', 'temp. mead']
+LABELS_NAMES = [
+    "barley",
+    "wheat",
+    "rapeseed",
+    "corn",
+    "sunflower",
+    "orchards",
+    "nuts",
+    "perm. mead",
+    "temp. mead",
+]
 
-APPROXIMATED_DOY_51 = [2, 12, 15, 32, 42, 52, 62, 72, 82, 92, 102, 112, 122, 132, 142, 152, 162, 172, \
-                       182, 187, 192, 197, 202, 207, 212, 217, 227, 232, 237, 242, 252, 257, 262, 267, 272, 277, \
-                       282, 292, 297, 302, 307, 312, 317, 322, 327, 332, 342, 347, 352, 357, 362] 
-
-APPROXIMATED_DOY_102 = [2, 5, 12, 15, 25, 32, 35, 42, 45, 52, 55, 62, 65, 72, 75, 82, 85, 92, \
-                        95, 102, 105, 112, 115, 122, 125, 132, 135, 142, 145, 152, 155, 162, 165, 172, 175, 180, \
-                        182, 185, 187, 190, 192, 195, 197, 200, 202, 205, 207, 210, 212, 215, 217, 220, 225, 227, \
-                        230, 232, 235, 237, 242, 245, 250, 252, 255, 257, 260, 262, 265, 267, 270, 272, 275, 277, \
-                        280, 282, 292, 295, 297, 300, 302, 305, 307, 310, 312, 315, 317, 320, 322, 325, 327, 330, \
-                        332, 335, 340, 342, 345, 347, 350, 352, 355, 357, 360, 362]
 
 class BreizhCrops(Dataset):
-    def __init__(self, partition="train", root="breizhcrops_dataset", sequencelength=70, year=2017, return_id=False, corrected=False, daily_timestamps=False, original_time_serie_lengths=[51, 102], preload_ram=True):
+    def __init__(
+        self,
+        partition="train",
+        root="breizhcrops_dataset",
+        sequencelength=70,
+        year=2017,
+        return_id=False,
+        corrected=False,
+        daily_timestamps=False,
+        original_time_serie_lengths=[51, 102],
+        preload_ram=True,
+    ):
         """
-        BreizhCrops dataset 
-        INPUT: 
+        BreizhCrops dataset
+        INPUT:
         - partition: str, either "train", "valid" or "eval"
         - root: str, path to the root folder where the data is stored
         - sequencelength: int, the length of the sequences that will be returned
@@ -33,50 +44,147 @@ class BreizhCrops(Dataset):
         assert partition in ["train", "valid", "eval", "final_train"]
         if not corrected:
             if partition == "train":
-                frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
-                frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                frh01 = BzhBreizhCrops(
+                    "frh01",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                )
+                frh02 = BzhBreizhCrops(
+                    "frh02",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                )
                 self.ds = torch.utils.data.ConcatDataset([frh01, frh02])
                 self.labels_names = frh01.labels_names
             elif partition == "valid":
-                self.ds = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                self.ds = BzhBreizhCrops(
+                    "frh03",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                )
                 self.labels_names = self.ds.labels_names
             elif partition == "eval":
-                self.ds = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                self.ds = BzhBreizhCrops(
+                    "frh04",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                )
                 self.labels_names = self.ds.labels_names
             elif partition == "final_train":
                 # group validation and train set together
-                frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
-                frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
-                frh03 = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected)
+                frh01 = BzhBreizhCrops(
+                    "frh01",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                )
+                frh02 = BzhBreizhCrops(
+                    "frh02",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                )
+                frh03 = BzhBreizhCrops(
+                    "frh03",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                )
                 self.ds = torch.utils.data.ConcatDataset([frh01, frh02, frh03])
                 self.labels_names = frh01.labels_names
         else:
             # because of the corrected flag, we need to load the datasets differently for the sizes to be reasonable
             if partition == "train":
-                self.ds = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                self.ds = BzhBreizhCrops(
+                    "frh02",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                    original_time_serie_lengths=original_time_serie_lengths,
+                )
                 self.labels_names = self.ds.labels_names
             elif partition == "valid":
-                self.ds = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                self.ds = BzhBreizhCrops(
+                    "frh01",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                    original_time_serie_lengths=original_time_serie_lengths,
+                )
                 self.labels_names = self.ds.labels_names
             elif partition == "eval":
-                frh03 = BzhBreizhCrops("frh03", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
-                frh04 = BzhBreizhCrops("frh04", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                frh03 = BzhBreizhCrops(
+                    "frh03",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                    original_time_serie_lengths=original_time_serie_lengths,
+                )
+                frh04 = BzhBreizhCrops(
+                    "frh04",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                    original_time_serie_lengths=original_time_serie_lengths,
+                )
                 self.ds = torch.utils.data.ConcatDataset([frh03, frh04])
                 self.ds_1 = frh03
                 self.ds_2 = frh04
                 self.labels_names = frh03.labels_names
             elif partition == "final_train":
                 # group validation and train set together
-                frh01 = BzhBreizhCrops("frh01", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
-                frh02 = BzhBreizhCrops("frh02", root=root, transform=lambda x: x, preload_ram=preload_ram, year=year, corrected=corrected, original_time_serie_lengths=original_time_serie_lengths)
+                frh01 = BzhBreizhCrops(
+                    "frh01",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                    original_time_serie_lengths=original_time_serie_lengths,
+                )
+                frh02 = BzhBreizhCrops(
+                    "frh02",
+                    root=root,
+                    transform=lambda x: x,
+                    preload_ram=preload_ram,
+                    year=year,
+                    corrected=corrected,
+                    original_time_serie_lengths=original_time_serie_lengths,
+                )
                 self.ds = torch.utils.data.ConcatDataset([frh01, frh02])
                 self.labels_names = frh01.labels_names
 
         self.corrected = corrected
-        self.daily_timestamps = daily_timestamps 
-        if self.daily_timestamps: 
+        self.daily_timestamps = daily_timestamps
+        if self.daily_timestamps:
             self.sequencelength = 365
-        else: 
+        else:
             self.sequencelength = sequencelength
         self.return_id = return_id
         self.class_weights = None
@@ -86,20 +194,20 @@ class BreizhCrops(Dataset):
         return len(self.ds)
 
     def __getitem__(self, item):
-        X,y,id = self.ds[item]
+        X, y, id = self.ds[item]
 
         # take bands and normalize
         # ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B10', 'B11', 'B12', '...']
-        X = X[:,:13] * 1e-4
+        X = X[:, :13] * 1e-4
 
         # get length of this sample
         t = X.shape[0]
 
         if self.corrected and self.daily_timestamps:
             # in this case the sequences are either of length 51 or 102.
-            if t==51:
+            if t == 51:
                 doys = APPROXIMATED_DOY_51
-            elif t==102:
+            elif t == 102:
                 doys = APPROXIMATED_DOY_102
             else:
                 raise ValueError(f"Sequence length {t} not recognized")
@@ -108,11 +216,11 @@ class BreizhCrops(Dataset):
             X_[doys] = X
             X = X_
             t = 365
-        else: 
+        else:
             if t < self.sequencelength:
                 # time series shorter than "sequencelength" will be zero-padded
                 npad = self.sequencelength - t
-                X = np.pad(X, [(0, npad), (0, 0)], 'constant', constant_values=0)
+                X = np.pad(X, [(0, npad), (0, 0)], "constant", constant_values=0)
             elif t > self.sequencelength:
                 # time series longer than "sequencelength" will be sub-sampled
                 idxs = np.random.choice(t, self.sequencelength, replace=False)
@@ -126,20 +234,20 @@ class BreizhCrops(Dataset):
             return X, y, id
         else:
             return X, y
-        
+
     def get_sequence_lengths(self):
-        """ 
+        """
         Returns the sequence lengths of the time series in the dataset
         """
         if hasattr(self.ds, "datasets"):
             sequence_length = []
             for ds in self.ds.datasets:
-                sequence_length.append(np.array(ds.index['sequencelength'].values))
+                sequence_length.append(np.array(ds.index["sequencelength"].values))
             sequence_length = np.concatenate(sequence_length)
         else:
-            sequence_length = np.array(self.ds.index['sequencelength'].values)
+            sequence_length = np.array(self.ds.index["sequencelength"].values)
         return np.array(sequence_length)
-    
+
     def get_class_weights(self):
         """
         Returns the class weights of the dataset
@@ -151,7 +259,7 @@ class BreizhCrops(Dataset):
                 _, y, _ = self.ds[i]
                 class_counts[y] += 1
             min_class_count = class_counts.min()
-            class_weights = min_class_count / class_counts 
+            class_weights = min_class_count / class_counts
             self.class_weights = class_weights
         return self.class_weights
 
@@ -168,17 +276,83 @@ import numpy as np
 
 
 BANDS = {
-    "L1C": ['B1', 'B10', 'B11', 'B12', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8',
-            'B8A', 'B9', 'QA10', 'QA20', 'QA60', 'doa', 'label', 'id'],
-    "L2A": ['doa', 'id', 'code_cultu', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8',
-            'B8A', 'B11', 'B12', 'CLD', 'EDG', 'SAT']
+    "L1C": [
+        "B1",
+        "B10",
+        "B11",
+        "B12",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B8A",
+        "B9",
+        "QA10",
+        "QA20",
+        "QA60",
+        "doa",
+        "label",
+        "id",
+    ],
+    "L2A": [
+        "doa",
+        "id",
+        "code_cultu",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B8A",
+        "B11",
+        "B12",
+        "CLD",
+        "EDG",
+        "SAT",
+    ],
 }
 
 SELECTED_BANDS = {
-    "L1C": ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B10', 'B11', 'B12',
-            'QA10', 'QA20', 'QA60', 'doa'],
-    "L2A": ['doa', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12',
-            'CLD', 'EDG', 'SAT', ]
+    "L1C": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B8A",
+        "B9",
+        "B10",
+        "B11",
+        "B12",
+        "QA10",
+        "QA20",
+        "QA60",
+        "doa",
+    ],
+    "L2A": [
+        "doa",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B8A",
+        "B11",
+        "B12",
+        "CLD",
+        "EDG",
+        "SAT",
+    ],
 }
 
 PADDING_VALUE = -1
@@ -186,20 +360,22 @@ PADDING_VALUE = -1
 
 class BzhBreizhCrops(Dataset):
 
-    def __init__(self,
-                 region,
-                 root="breizhcrops_dataset",
-                 year=2017, level="L1C",
-                 transform=None,
-                 target_transform=None,
-                 filter_length=0,
-                 verbose=False,
-                 load_timeseries=True,
-                 recompile_h5_from_csv=False,
-                 preload_ram=False,
-                 corrected=False,
-                 original_time_serie_lengths=[51, 102],
-                 ):
+    def __init__(
+        self,
+        region,
+        root="breizhcrops_dataset",
+        year=2017,
+        level="L1C",
+        transform=None,
+        target_transform=None,
+        filter_length=0,
+        verbose=False,
+        load_timeseries=True,
+        recompile_h5_from_csv=False,
+        preload_ram=False,
+        corrected=False,
+        original_time_serie_lengths=[51, 102],
+    ):
         """
         :param region: dataset region. choose from "frh01", "frh02", "frh03", "frh04", "belle-ile"
         :param root: where the data will be stored. defaults to `./breizhcrops_dataset`
@@ -234,17 +410,27 @@ class BzhBreizhCrops(Dataset):
         self.corrected = corrected
 
         if verbose:
-            print(f"Initializing BreizhCrops region {region}, year {year}, level {level}")
+            print(
+                f"Initializing BreizhCrops region {region}, year {year}, level {level}"
+            )
 
         self.root = root
-        self.h5path, self.indexfile, self.codesfile, self.shapefile, self.classmapping, self.csvfolder = \
-            self.build_folder_structure(self.root, self.year, self.level, self.region)
+        (
+            self.h5path,
+            self.indexfile,
+            self.codesfile,
+            self.shapefile,
+            self.classmapping,
+            self.csvfolder,
+        ) = self.build_folder_structure(self.root, self.year, self.level, self.region)
 
         self.load_classmapping(self.classmapping)
 
         if os.path.exists(self.h5path):
             print(os.path.getsize(self.h5path), FILESIZES[year][level][region])
-            h5_database_ok = os.path.getsize(self.h5path) == FILESIZES[year][level][region]
+            h5_database_ok = (
+                os.path.getsize(self.h5path) == FILESIZES[year][level][region]
+            )
         else:
             h5_database_ok = False
 
@@ -257,35 +443,47 @@ class BzhBreizhCrops(Dataset):
             self.write_h5_database_from_csv(self.index)
         if not h5_database_ok and not recompile_h5_from_csv and load_timeseries:
             self.download_h5_database()
-        
+
         self.index = pd.read_csv(self.indexfile, index_col=None)
-        if "classid" not in self.index.columns or "classname" not in self.index.columns or "region" not in self.index.columns:
+        if (
+            "classid" not in self.index.columns
+            or "classname" not in self.index.columns
+            or "region" not in self.index.columns
+        ):
             print("first time loading data, applying class mapping...")
             self.init_index_file(verbose, filter_length)
-            
-        if self.corrected and self.level=="L1C":
+
+        if self.corrected and self.level == "L1C":
             print("correcting sequence length and removing small classes")
             self.correct_sequence_length(original_time_serie_lengths)
             self.index = pd.read_csv(self.indexfile, index_col=None)
             self.init_index_file(verbose, filter_length)
-        
+
         if preload_ram:
             self.X_list = list()
             with h5py.File(self.h5path, "r") as dataset:
-                for idx, row in tqdm(self.index.iterrows(), desc="loading data into RAM", total=len(self.index)):
+                for idx, row in tqdm(
+                    self.index.iterrows(),
+                    desc="loading data into RAM",
+                    total=len(self.index),
+                ):
                     self.X_list.append(np.array(dataset[(row.path)]))
         else:
             self.X_list = None
-            
+
     def init_index_file(self, verbose, filter_length):
-        """ initialize the index file with classid, classname and region """
+        """initialize the index file with classid, classname and region"""
         self.index = self.index.loc[self.index["CODE_CULTU"].isin(self.mapping.index)]
         if verbose:
-            print(f"kept {len(self.index)} time series references from applying class mapping") 
+            print(
+                f"kept {len(self.index)} time series references from applying class mapping"
+            )
 
         # filter zero-length time series
         if self.index.index.name != "idx":
-            self.index = self.index.loc[self.index.sequencelength > filter_length].set_index("idx")
+            self.index = self.index.loc[
+                self.index.sequencelength > filter_length
+            ].set_index("idx")
 
         self.maxseqlength = int(self.index["sequencelength"].max())
 
@@ -295,17 +493,27 @@ class BzhBreizhCrops(Dataset):
 
         self.index.rename(columns={"meanQA60": "meanCLD"}, inplace=True)
 
-        if "classid" not in self.index.columns or "classname" not in self.index.columns or "region" not in self.index.columns:
+        if (
+            "classid" not in self.index.columns
+            or "classname" not in self.index.columns
+            or "region" not in self.index.columns
+        ):
             # drop fields that are not in the class mapping
-            self.index = self.index.loc[self.index["CODE_CULTU"].isin(self.mapping.index)]
-            self.index[["classid", "classname"]] = self.index["CODE_CULTU"].apply(lambda code: self.mapping.loc[code])
+            self.index = self.index.loc[
+                self.index["CODE_CULTU"].isin(self.mapping.index)
+            ]
+            self.index[["classid", "classname"]] = self.index["CODE_CULTU"].apply(
+                lambda code: self.mapping.loc[code]
+            )
             self.index["region"] = self.region
             self.index.to_csv(self.indexfile)
         self.set_labels_names()
         self.get_codes()
 
     def download_csv_files(self):
-        zipped_file = os.path.join(self.root, str(self.year), self.level, f"{self.region}.zip")
+        zipped_file = os.path.join(
+            self.root, str(self.year), self.level, f"{self.region}.zip"
+        )
         download_file(RAW_CSV_URL[self.year][self.level][self.region], zipped_file)
         unzip(zipped_file, self.csvfolder)
         os.remove(zipped_file)
@@ -346,18 +554,27 @@ class BzhBreizhCrops(Dataset):
 
     def download_h5_database(self):
         print(f"downloading {self.h5path}.tar.gz")
-        download_file(H5_URLs[self.year][self.level][self.region], self.h5path + ".tar.gz", overwrite=True)
+        download_file(
+            H5_URLs[self.year][self.level][self.region],
+            self.h5path + ".tar.gz",
+            overwrite=True,
+        )
         print(f"extracting {self.h5path}.tar.gz to {self.h5path}")
         untar(self.h5path + ".tar.gz")
         print(f"removing {self.h5path}.tar.gz")
         os.remove(self.h5path + ".tar.gz")
         print(f"checking integrity by file size...")
-        assert os.path.getsize(self.h5path) == FILESIZES[self.year][self.level][self.region]
+        assert (
+            os.path.getsize(self.h5path)
+            == FILESIZES[self.year][self.level][self.region]
+        )
         print("ok!")
 
     def write_h5_database_from_csv(self, index):
         with h5py.File(self.h5path, "w") as dataset:
-            for idx, row in tqdm(index.iterrows(), total=len(index), desc=f"writing {self.h5path}"):
+            for idx, row in tqdm(
+                index.iterrows(), total=len(index), desc=f"writing {self.h5path}"
+            ):
                 X = self.load(os.path.join(self.root, row.path))
                 dataset.create_dataset(row.path, data=X)
 
@@ -365,7 +582,9 @@ class BzhBreizhCrops(Dataset):
         return self.codes
 
     def download_geodataframe(self):
-        targzfile = os.path.join(os.path.dirname(self.shapefile), self.region + ".tar.gz")
+        targzfile = os.path.join(
+            os.path.dirname(self.shapefile), self.region + ".tar.gz"
+        )
         download_file(SHP_URLs[self.year][self.region], targzfile)
         untar(targzfile)
         os.remove(targzfile)
@@ -393,7 +612,9 @@ class BzhBreizhCrops(Dataset):
     def load_classmapping(self, classmapping):
         if not os.path.exists(classmapping):
             if self.verbose:
-                print(f"no classmapping found at {classmapping}, downloading from {CLASSMAPPINGURL}")
+                print(
+                    f"no classmapping found at {classmapping}, downloading from {CLASSMAPPINGURL}"
+                )
             download_file(CLASSMAPPINGURL, classmapping)
         else:
             if self.verbose:
@@ -410,8 +631,10 @@ class BzhBreizhCrops(Dataset):
 
     def load_raw(self, csv_file):
         """['B1', 'B10', 'B11', 'B12', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8',
-               'B8A', 'B9', 'QA10', 'QA20', 'QA60', 'doa', 'label', 'id']"""
-        sample = pd.read_csv(os.path.join(self.csvfolder, os.path.basename(csv_file)), index_col=0).dropna()
+        'B8A', 'B9', 'QA10', 'QA20', 'QA60', 'doa', 'label', 'id']"""
+        sample = pd.read_csv(
+            os.path.join(self.csvfolder, os.path.basename(csv_file)), index_col=0
+        ).dropna()
 
         # convert datetime to int
         sample["doa"] = pd.to_datetime(sample["doa"]).astype(int)
@@ -485,7 +708,9 @@ class BzhBreizhCrops(Dataset):
                 cld_index = SELECTED_BANDS["L2A"].index("CLD")
 
             X = self.load(os.path.join(self.csvfolder, csv_file))
-            culturecode, id = self.load_culturecode_and_id(os.path.join(self.csvfolder, csv_file))
+            culturecode, id = self.load_culturecode_and_id(
+                os.path.join(self.csvfolder, csv_file)
+            )
 
             if culturecode is None or id is None:
                 continue
@@ -497,40 +722,44 @@ class BzhBreizhCrops(Dataset):
                     CODE_CULTU=culturecode,
                     path=os.path.join(self.csvfolder, f"{id}" + ".csv"),
                     idx=i,
-                    sequencelength=len(X)
+                    sequencelength=len(X),
                 )
             )
             i += 1
 
         self.index = pd.DataFrame(listcsv_statistics)
         self.index.to_csv(self.indexfile)
-        
+
     def correct_sequence_length(self, original_time_serie_lengths):
         """
         if corrected is True, only time series with lengths in "original_time_serie_lengths" will be kept.
-        Moreover, small classes (nuts and sunflowers) are removed. 
-        To take the previous change into account, target_transform is updated to update the labels. 
+        Moreover, small classes (nuts and sunflowers) are removed.
+        To take the previous change into account, target_transform is updated to update the labels.
         """
         # create a file with only 51 and 102 length time series
         df = pd.read_csv(self.indexfile, index_col=None)
         df = df[df["sequencelength"].isin(original_time_serie_lengths)]
         # remove the small classes: classnames nuts and sunflowers
-        df = df[~df['classid'].isin([6, 4])]
-        # change the classid from 0 to 7, after removing 4 and 6, knowing that the classes were from 0 to 9. 
+        df = df[~df["classid"].isin([6, 4])]
+        # change the classid from 0 to 7, after removing 4 and 6, knowing that the classes were from 0 to 9.
         dict_new_classid = {0: 0, 1: 1, 2: 2, 3: 3, 5: 4, 7: 5, 8: 6}
-        df['classid'] = df['classid'].replace(dict_new_classid)
+        df["classid"] = df["classid"].replace(dict_new_classid)
         self.indexfile = self.indexfile.replace(".csv", "_corrected.csv")
-        assert df['classid'].nunique() == 7
+        assert df["classid"].nunique() == 7
         df.to_csv(self.indexfile, index=False)
         # change self.target_transform to take into account the new classid, i.e. following dict_new_classid
-        self.target_transform = lambda y: torch.tensor(dict_new_classid[y], dtype=torch.long)
+        self.target_transform = lambda y: torch.tensor(
+            dict_new_classid[y], dtype=torch.long
+        )
 
     def set_labels_names(self):
-        unique_samples_classnames = self.index[['classname', 'classid']].drop_duplicates()
+        unique_samples_classnames = self.index[
+            ["classname", "classid"]
+        ].drop_duplicates()
         # Sort by 'classid'
-        sorted_samples = unique_samples_classnames.sort_values(by='classid')
+        sorted_samples = unique_samples_classnames.sort_values(by="classid")
         # Keep only the 'classname' column
-        self.labels_names = sorted_samples['classname'].values
+        self.labels_names = sorted_samples["classname"].values
 
 
 def get_default_transform(level):
@@ -539,9 +768,23 @@ def get_default_transform(level):
 
     bands = SELECTED_BANDS[level]
     if level == "L1C":
-        selected_bands = ['B1', 'B10', 'B11', 'B12', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9']
+        selected_bands = [
+            "B1",
+            "B10",
+            "B11",
+            "B12",
+            "B2",
+            "B3",
+            "B4",
+            "B5",
+            "B6",
+            "B7",
+            "B8",
+            "B8A",
+            "B9",
+        ]
     elif level == "L2A":
-        selected_bands = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B11', 'B12']
+        selected_bands = ["B2", "B3", "B4", "B5", "B6", "B7", "B8", "B8A", "B11", "B12"]
 
     selected_band_idxs = np.array([bands.index(b) for b in selected_bands])
 
@@ -566,6 +809,7 @@ def get_default_transform(level):
 def get_default_target_transform():
     return lambda y: torch.tensor(y, dtype=torch.long)
 
+
 RAW_CSV_URL = {
     2017: {
         "L1C": {
@@ -579,8 +823,7 @@ RAW_CSV_URL = {
             "frh02": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/frh02.zip",
             "frh03": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/frh03.zip",
             "frh04": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/frh04.zip",
-
-        }
+        },
     },
     2018: {
         "L1C": {
@@ -589,7 +832,7 @@ RAW_CSV_URL = {
             "frh03": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/L1C/frh03.zip",
             "frh04": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/L1C/frh04.zip",
         }
-    }
+    },
 }
 
 INDEX_FILE_URLs = {
@@ -599,24 +842,24 @@ INDEX_FILE_URLs = {
             "frh02": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L1C/frh02.csv",
             "frh03": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L1C/frh03.csv",
             "frh04": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L1C/frh04.csv",
-            "belle-ile": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L1C/belle-ile.csv"
+            "belle-ile": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L1C/belle-ile.csv",
         },
         "L2A": {
             "frh01": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/frh01.csv",
             "frh02": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/frh02.csv",
             "frh03": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/frh03.csv",
             "frh04": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/frh04.csv",
-            "belle-ile": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/belle-ile.csv"
-        }
+            "belle-ile": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/belle-ile.csv",
+        },
     },
     2018: {
-            "L1C": {
-                "frh01": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/L1C/frh01.csv",
-                "frh02": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/L1C/frh02.csv",
-                "frh03": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/L1C/frh03.csv",
-                "frh04": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/L1C/frh04.csv",
-            }
+        "L1C": {
+            "frh01": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/L1C/frh01.csv",
+            "frh02": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/L1C/frh02.csv",
+            "frh03": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/L1C/frh03.csv",
+            "frh04": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/L1C/frh04.csv",
         }
+    },
 }
 
 SHP_URLs = {
@@ -625,14 +868,14 @@ SHP_URLs = {
         "frh02": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/shp/frh02.tar.gz",
         "frh03": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/shp/frh03.tar.gz",
         "frh04": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/shp/frh04.tar.gz",
-        "belle-ile": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/shp/belle-ile.tar.gz"
+        "belle-ile": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/shp/belle-ile.tar.gz",
     },
     2018: {
         "frh01": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/shp/frh01.tar.gz",
         "frh02": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/shp/frh02.tar.gz",
         "frh03": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/shp/frh03.tar.gz",
         "frh04": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2018/shp/frh04.tar.gz",
-    }
+    },
 }
 
 FILESIZES = {
@@ -642,24 +885,24 @@ FILESIZES = {
             "frh02": 2253658856,
             "frh03": 2493572704,
             "frh04": 1555075632,
-            "belle-ile": 17038944
+            "belle-ile": 17038944,
         },
         "L2A": {
             "frh01": 987259904,
             "frh02": 803457960,
             "frh03": 890027448,
             "frh04": 639215848,
-            "belle-ile": 8037952
-        }
+            "belle-ile": 8037952,
+        },
     },
     2018: {
         "L1C": {
             "frh01": 9878839310,
             "frh02": 8567550069,
             "frh03": 10196638286,
-            "frh04": 2235351576 # 6270634169
+            "frh04": 2235351576,  # 6270634169
         }
-    }
+    },
 }
 
 H5_URLs = {
@@ -669,15 +912,15 @@ H5_URLs = {
             "frh02": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L1C/frh02.h5.tar.gz",
             "frh03": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L1C/frh03.h5.tar.gz",
             "frh04": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L1C/frh04.h5.tar.gz",
-            "belle-ile": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L1C/belle-ile.h5.tar.gz"
+            "belle-ile": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L1C/belle-ile.h5.tar.gz",
         },
         "L2A": {
             "frh01": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/frh01.h5.tar.gz",
             "frh02": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/frh02.h5.tar.gz",
             "frh03": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/frh03.h5.tar.gz",
             "frh04": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/frh04.h5.tar.gz",
-            "belle-ile": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/belle-ile.h5.tar.gz"
-        }
+            "belle-ile": "https://breizhcrops.s3.eu-central-1.amazonaws.com/2017/L2A/belle-ile.h5.tar.gz",
+        },
     }
 }
 
@@ -685,7 +928,9 @@ H5_URLs = {
 CLASSMAPPINGURL = "https://breizhcrops.s3.eu-central-1.amazonaws.com/classmapping.csv"
 
 # 13-classes used in ICML workshop
-CLASSMAPPINGURL_ICML = "https://breizhcrops.s3.eu-central-1.amazonaws.com/classmapping_icml.csv"
+CLASSMAPPINGURL_ICML = (
+    "https://breizhcrops.s3.eu-central-1.amazonaws.com/classmapping_icml.csv"
+)
 
 CODESURL = "https://breizhcrops.s3.eu-central-1.amazonaws.com/codes.csv"
 
@@ -712,20 +957,25 @@ def update_progress(progress):
         progress = 1
         status = "Done...\r\n"
     block = int(round(barLength * progress))
-    text = "\rLoaded: [{0}] {1:.2f}% {2}".format("#" * block + "-" * (barLength - block), progress * 100, status)
+    text = "\rLoaded: [{0}] {1:.2f}% {2}".format(
+        "#" * block + "-" * (barLength - block), progress * 100, status
+    )
     sys.stdout.write(text)
     sys.stdout.flush()
 
 
 def untar(filepath):
     dirname = os.path.dirname(filepath)
-    with tarfile.open(filepath, 'r:gz') as tar:
-        #tar.extractall(path=dirname)
-	#tar = tarfile.open(tar_file)
+    with tarfile.open(filepath, "r:gz") as tar:
+        # tar.extractall(path=dirname)
+        # tar = tarfile.open(tar_file)
         for member in tar.getmembers():
             if member.isreg():  # skip if the TarInfo is not files
-                member.name = os.path.basename(member.name) # remove the path by reset it
-                tar.extract(member,dirname) # extract
+                member.name = os.path.basename(
+                    member.name
+                )  # remove the path by reset it
+                tar.extract(member, dirname)  # extract
+
 
 class DownloadProgressBar(tqdm):
     def update_to(self, b=1, bsize=1, tsize=None):
@@ -739,9 +989,12 @@ def download_file(url, output_path, overwrite=False):
         raise ValueError("download_file: provided url is None!")
 
     if not os.path.exists(output_path) or overwrite:
-        with DownloadProgressBar(unit='B', unit_scale=True,
-                                 miniters=1, desc=url.split('/')[-1]) as t:
-            urllib.request.urlretrieve(url, filename=output_path, reporthook=t.update_to)
+        with DownloadProgressBar(
+            unit="B", unit_scale=True, miniters=1, desc=url.split("/")[-1]
+        ) as t:
+            urllib.request.urlretrieve(
+                url, filename=output_path, reporthook=t.update_to
+            )
     else:
         print(f"file exists in {output_path}. specify overwrite=True if intended")
 
@@ -749,7 +1002,7 @@ def download_file(url, output_path, overwrite=False):
 def unzip(zipfile_path, target_dir):
     with zipfile.ZipFile(zipfile_path) as zip:
         for zip_info in zip.infolist():
-            if zip_info.filename[-1] == '/':
+            if zip_info.filename[-1] == "/":
                 continue
             zip_info.filename = os.path.basename(zip_info.filename)
             zip.extract(zip_info, target_dir)

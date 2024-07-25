@@ -3,6 +3,7 @@ import requests
 import tarfile
 import os
 
+
 def download(link, file_name):
     # make folder if not exists
     os.makedirs(os.path.dirname(file_name), exist_ok=True)
@@ -10,9 +11,9 @@ def download(link, file_name):
     with open(file_name, "wb") as f:
         print("Downloading %s" % file_name)
         response = requests.get(link, stream=True)
-        total_length = response.headers.get('content-length')
+        total_length = response.headers.get("content-length")
 
-        if total_length is None: # no content length header
+        if total_length is None:  # no content length header
             f.write(response.content)
         else:
             dl = 0
@@ -21,8 +22,9 @@ def download(link, file_name):
                 dl += len(data)
                 f.write(data)
                 done = int(50 * dl / total_length)
-                sys.stdout.write("\r[%s%s]" % ('=' * done, ' ' * (50-done)) )
+                sys.stdout.write("\r[%s%s]" % ("=" * done, " " * (50 - done)))
                 sys.stdout.flush()
+
 
 def untar(fname):
     dirname = os.path.dirname(fname)
