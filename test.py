@@ -79,19 +79,17 @@ def main(run_name, sequencelength_test, plot_label_distribution=False, partition
 if __name__ == "__main__":
     # run with: python test.py --run-name lemon-donkey-4636
     parser = argparse.ArgumentParser()
-    parser.add_argument("--run-name", type=str, help="name of the run to test")
+    parser.add_argument("--run-name", type=str, help="name of the wandb run to test")
     parser.add_argument("--sequencelength-test", type=int, help="sequence length of the test dataset", default=None)
-    parser.add_argument("--plot-label-distribution", type=bool, help="plot the label distribution", default=False)
-    parser.add_argument("--dataroot", type=str, help="local dataroot", default='default, which is os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")')
-    parser.add_argument("--partition", type=str, help="partition to test on", default='eval')
+    parser.add_argument("--plot-label-distribution", type=bool, help="if true, plot the label distribution", default=False)
+    parser.add_argument("--dataroot", type=str, help="local dataroot", default='os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")')
+    parser.add_argument("--partition", type=str, help="partition to test on, should be 'train', 'valid', or 'eval'", default='eval')
     args = parser.parse_args()
     run_name = args.run_name
     sequencelength_test = args.sequencelength_test
     plot_label_distribution = args.plot_label_distribution
     partition=args.partition
-    if args.dataroot == 'default':
-        local_dataroot = os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")
-    elif args.dataroot == 'config':
+    if args.dataroot == 'config':
         local_dataroot = 'config'
     else:
         local_dataroot = args.dataroot

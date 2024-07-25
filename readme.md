@@ -1,29 +1,24 @@
-# ELECTS: End-to-End Learned Early Classification of Time Series for In-Season Crop Type Mapping
+# D-ELECTS - In Season Crop Classification using Satellite Imagery
+This repository contains the code of my master thesis project.  The report is available [here](Master_Thesis__In_Season_Crop_Classification_using_Satellite_Imagery%20.pdf).
 
-<img width="100%" src="png/elects.png">
+<img width="100%" src="png/input-output.drawio.png">
 
-please cite
-> Marc Rußwurm, Nicolas Courty, Remi Emonet, Sebastien Lefévre, Devis Tuia, and Romain Tavenard (2023). End-to-End Learned Early Classification of Time Series for In-Season Crop Type Mapping. ISPRS Journal of Photogrammetry and Remote Sensing. 196. 445-456. https://doi.org/10.1016/j.isprsjprs.2022.12.016
+The Readme is structured as follows:
+- [D-ELECTS - In Season Crop Classification using Satellite Imagery](#d-elects---in-season-crop-classification-using-satellite-imagery)
+  - [1. Abstract](#1-abstract)
+  - [2. Dependencies](#2-dependencies)
+  - [3. Train the Model](#3-train-the-model)
+    - [Monitor training](#monitor-training)
+      - [2. Final Train](#2-final-train)
+  - [4. Test the Model](#4-test-the-model)
+  - [5. Notebooks](#5-notebooks)
+  - [6. References](#6-references)
 
-```
-@article{russwurm2023:ELECTS,
-  title = {End-to-end learned early classification of time series for in-season crop type mapping},
-  journal = {ISPRS Journal of Photogrammetry and Remote Sensing},
-  volume = {196},
-  pages = {445-456},
-  year = {2023},
-  issn = {0924-2716},
-  doi = {https://doi.org/10.1016/j.isprsjprs.2022.12.016},
-  url = {https://www.sciencedirect.com/science/article/pii/S092427162200332X},
-  author = {Marc Rußwurm and Nicolas Courty and Rémi Emonet and Sébastien Lefèvre and Devis Tuia and Romain Tavenard},
-}
-```
+## 1. Abstract
+[TO COMPLETE]
 
-paper available at https://www.sciencedirect.com/science/article/pii/S092427162200332X
-
-[arxiv preprint here](https://arxiv.org/pdf/1901.10681.pdf)
-
-## Dependencies
+## 2. Dependencies 
+[TO COMPLETE]
 
 ```
 python -m venv venv
@@ -31,53 +26,78 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Getting Started:
 
-Test model predictions on the evaluation set with Jupyter
-Notebook provided in `elects.ipynb`
+## 3. Train the Model
 
-<img height="200px" src="./png/elects_notebook.png">
-
-## Run Training Loop
-
-### Monitor training visally (optional)
-Create an account on [wandb](https://wandb.ai) and store your API key in a file `.env` in an environment file. The file should look like this:
+### Monitor training 
+Create an account on [wandb](https://wandb.ai) and login to your account in the terminal
+```bash
+wandb login
 ```
-SECRET_WANDB_API_KEY=your_api_key
-```
-Then set the environment variable `ENV_FILE` to the path of the environment file.
+Create a project on wandb. 
+
+Then, fill the [`personal_config.yaml`](config/personal_config.yaml) file with your wandb data 
+
+```yaml 
+entity: <username>
+project: <projectname>
+```	
 
 ### Start training loop
-
+[TO COMPLETE]
 To start the training loop run
 ```
-❯ python train.py
+❯ python train.py --
 Setting up a new session...
 epoch 100: trainloss 1.70, testloss 1.97, accuracy 0.87, earliness 0.48. classification loss 7.43, earliness reward 3.48: 100%|███| 100/100 [06:34<00:00,  3.95s/it]
 ```
 The BavarianCrops dataset is automatically downloaded.
 Additional options (e.g., `--alpha`, `--epsilon`, `--batchsize`) are available with `python train.py --help`.
 
-## Docker
 
-It is also possible to install dependencies in a docker environment
+### Other training variants (optional)
+Two training variants are available in the [`training_variants`](training_variants) folder. They aim to optimize the hyperparameters of the model and to train the model on the training and validation sets.
+
+#### 1. Sweep Train
+For hyperparameter optimization, you can use the [`train_sweep.py`](training_variants/train_sweep.py) script. To do so, first initialize a sweep with
 ```
-docker build -t elects .
+wandb sweep --project <projectname> <configpath>
 ```
-and run the training script
+where `<configpath>` is the path to the sweep configuration file. An example of sweep configuration file is given in [`config/sweep_config.yaml`](config/sweep_config.yaml).
+Make sure to change `dataroot` and `snapshot` values to the correct paths. This command will return a `<sweep_id>`.
+
+Then, launch wandb agent with 
+```bash
+wandb agent <username>/<projectname>/<sweep_id>
 ```
-docker run elects python train.py
+where `<sweep_id>` is the id of the sweep you initialized. You can follow the training process on the wandb dashboard.
+
+You can find the best model via the wandb dashboard, and download the configuration file from there. You can also find the best model by downloading the results locally and selecting the model according to your preferences. See the beginning of the notebook [`prediction_one_parcel.ipynb`](notebooks/prediction_one_parcel.ipynb)  for an example of how to do this.
+
+Save the configuration file of the selected model in json format.
+
+#### 2. Final Train
+Once the best configuration of hyperparameters is found, you can train the model on both the training and the validation sets with the [`final_train.py`](training_variants/final_train.py) script. To do so, run
+```bash 
+python training_variants/final_train.py --configpath <configpath>
 ```
+where `<configpath>` is the path to the selected model configuration file. An example is given in [`config/best_model_config.json`](config/best_model_config.json).
+
+## 4. Test the Model
+To test the model on the test set run
+```
+python test.py --run-name <run-name>
+```
+where `<run-name>` is the name of the wandb run you want to test. The test set is automatically downloaded.
+Several options are available with `python test.py --help`.
+
+## 5. Notebooks
+In the `notebooks` folder, you can find several notebooks to reproduce the results of the paper.
+1. [`dataset_plot.ipynb`](notebooks/dataset_plot.ipynb) - explore the BreizhCrops and the Reduced BreizhCrops datasets;
+2. [`plot_maps.ipynb`](notebooks/plot_maps.ipynb) - load a wandb run and plot the classification maps;
+3. [`prediction_one_parcel.ipynb`](notebooks/prediction_one_parcel.ipynb) - view the runs of the wandb project, select one run, and predict the crop type of a single parcel. Make sure to add the sweep name in the [`personal_config.yaml`](config/personal_config.yaml) file under the `sweep` key.
+4. [`results_table.ipynb`](notebooks/results_table.ipynb) - load the results of the wandb project and create a table with the results of some selected runs.
 
 
-python train.py --dataroot /data/sustainbench --dataset ghana
-python train.py --dataroot /data/sustainbench --dataset southsudan
-
---dataroot /data/sustainbench --dataset southsudan --epochs 500
-
-# launch jobs on runai
-Use the shell script `submit_job.sh` to launch jobs on runai. By default, the dataset is set to `breizhcrops`. To run the shell, first set the environment variable `ENV_FILE` to the path of the environment file. Then run the shell script as follows:
-```
-./submit_job.sh
-```
-You can follow the progress of the job on your wandb account. 
+## 6. References
+> Marc Rußwurm, Nicolas Courty, Remi Emonet, Sebastien Lefévre, Devis Tuia, and Romain Tavenard (2023). End-to-End Learned Early Classification of Time Series for In-Season Crop Type Mapping. ISPRS Journal of Photogrammetry and Remote Sensing. 196. 445-456. https://doi.org/10.1016/j.isprsjprs.2022.12.016
