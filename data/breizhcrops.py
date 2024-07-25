@@ -257,15 +257,31 @@ class BzhBreizhCrops(Dataset):
             self.write_h5_database_from_csv(self.index)
         if not h5_database_ok and not recompile_h5_from_csv and load_timeseries:
             self.download_h5_database()
-            
-        self.correct_sequence_length(original_time_serie_lengths)
-    
+        
         self.index = pd.read_csv(self.indexfile, index_col=None)
+        if "classid" not in self.index.columns or "classname" not in self.index.columns or "region" not in self.index.columns:
+            print("first time loading data, applying class mapping...")
+            self.init_index_file(verbose, filter_length)
+            
+        if self.corrected and self.level=="L1C":
+            print("correcting sequence length and removing small classes")
+            self.correct_sequence_length(original_time_serie_lengths)
+            self.index = pd.read_csv(self.indexfile, index_col=None)
+            self.init_index_file(verbose, filter_length)
+        
+        if preload_ram:
+            self.X_list = list()
+            with h5py.File(self.h5path, "r") as dataset:
+                for idx, row in tqdm(self.index.iterrows(), desc="loading data into RAM", total=len(self.index)):
+                    self.X_list.append(np.array(dataset[(row.path)]))
+        else:
+            self.X_list = None
+            
+    def init_index_file(self, verbose, filter_length):
+        """ initialize the index file with classid, classname and region """
         self.index = self.index.loc[self.index["CODE_CULTU"].isin(self.mapping.index)]
         if verbose:
-            print(f"kept {len(self.index)} time series references from applying class mapping")
-            
-        self.set_labels_names() 
+            print(f"kept {len(self.index)} time series references from applying class mapping") 
 
         # filter zero-length time series
         if self.index.index.name != "idx":
@@ -277,14 +293,6 @@ class BzhBreizhCrops(Dataset):
             download_file(CODESURL, self.codesfile)
         self.codes = pd.read_csv(self.codesfile, delimiter=";", index_col=0)
 
-        if preload_ram:
-            self.X_list = list()
-            with h5py.File(self.h5path, "r") as dataset:
-                for idx, row in tqdm(self.index.iterrows(), desc="loading data into RAM", total=len(self.index)):
-                    self.X_list.append(np.array(dataset[(row.path)]))
-        else:
-            self.X_list = None
-
         self.index.rename(columns={"meanQA60": "meanCLD"}, inplace=True)
 
         if "classid" not in self.index.columns or "classname" not in self.index.columns or "region" not in self.index.columns:
@@ -293,6 +301,7 @@ class BzhBreizhCrops(Dataset):
             self.index[["classid", "classname"]] = self.index["CODE_CULTU"].apply(lambda code: self.mapping.loc[code])
             self.index["region"] = self.region
             self.index.to_csv(self.indexfile)
+        self.set_labels_names()
         self.get_codes()
 
     def download_csv_files(self):
@@ -502,20 +511,19 @@ class BzhBreizhCrops(Dataset):
         Moreover, small classes (nuts and sunflowers) are removed. 
         To take the previous change into account, target_transform is updated to update the labels. 
         """
-        if self.corrected and self.level=="L1C":
-            # create a file with only 51 and 102 length time series
-            df = pd.read_csv(self.indexfile, index_col=None)
-            df = df[df["sequencelength"].isin(original_time_serie_lengths)]
-            # remove the small classes: classnames nuts and sunflowers
-            df = df[~df['classid'].isin([6, 4])]
-            # change the classid from 0 to 7, after removing 4 and 6, knowing that the classes were from 0 to 9. 
-            dict_new_classid = {0: 0, 1: 1, 2: 2, 3: 3, 5: 4, 7: 5, 8: 6}
-            df['classid'] = df['classid'].replace(dict_new_classid)
-            self.indexfile = self.indexfile.replace(".csv", "_corrected.csv")
-            assert df['classid'].nunique() == 7
-            df.to_csv(self.indexfile, index=False)
-            # change self.target_transform to take into account the new classid, i.e. following dict_new_classid
-            self.target_transform = lambda y: torch.tensor(dict_new_classid[y], dtype=torch.long)
+        # create a file with only 51 and 102 length time series
+        df = pd.read_csv(self.indexfile, index_col=None)
+        df = df[df["sequencelength"].isin(original_time_serie_lengths)]
+        # remove the small classes: classnames nuts and sunflowers
+        df = df[~df['classid'].isin([6, 4])]
+        # change the classid from 0 to 7, after removing 4 and 6, knowing that the classes were from 0 to 9. 
+        dict_new_classid = {0: 0, 1: 1, 2: 2, 3: 3, 5: 4, 7: 5, 8: 6}
+        df['classid'] = df['classid'].replace(dict_new_classid)
+        self.indexfile = self.indexfile.replace(".csv", "_corrected.csv")
+        assert df['classid'].nunique() == 7
+        df.to_csv(self.indexfile, index=False)
+        # change self.target_transform to take into account the new classid, i.e. following dict_new_classid
+        self.target_transform = lambda y: torch.tensor(dict_new_classid[y], dtype=torch.long)
 
     def set_labels_names(self):
         unique_samples_classnames = self.index[['classname', 'classid']].drop_duplicates()

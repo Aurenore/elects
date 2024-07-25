@@ -58,6 +58,8 @@ def main(config):
     wandb.finish()
     
 if __name__ == '__main__':
+    # usage example 
+    # python training_variants/final_train.py --configpath config/best_model_config.json
     run_config = get_run_config()
     personal_config = load_personal_config(os.path.join("config", "personal_config.yaml"))
     wandb.init(
