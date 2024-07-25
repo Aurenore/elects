@@ -53,7 +53,19 @@ python train.py --configpath <configpath>
 where `<configpath>` is the path to the model configuration file, in json format. An example is given in [`config/best_model_config.json`](config/best_model_config.json).
 The BreizhCrops dataset is automatically downloaded. 
 
-Medias will be shown in the wandb dashboard, as the predictions stopping times, the class probabilities with respect to time, and the number of timestamps left to predict. 
+Medias will be shown in the wandb dashboard, as the distributions of the predictions stopping times, the class probabilities with respect to time, and the number of timestamps left to predict. 
+
+*Video 1. Distributions of the predictions stopping times*
+
+https://github.com/user-attachments/assets/c5474bed-3f3c-4829-85be-cb2ae25b0e75
+
+*Video 2. Class probabilities with respect to time*
+
+https://github.com/user-attachments/assets/f281ae29-c754-4b24-a6bf-b038c949dca6
+
+*Video 3. Timestamps left until the final prediction*
+
+https://github.com/user-attachments/assets/e843d8fa-13d6-4356-9123-1b9f74d8aa91
 
 
 ### Other training variants (optional)
