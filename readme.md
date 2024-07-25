@@ -104,6 +104,25 @@ python test.py --run-name <run-name>
 where `<run-name>` is the name of the wandb run you want to test. The test set is automatically downloaded.
 Several options are available with `python test.py --help`.
 
+The results of the test are saved in the `artifacts/<run_id>` folder. The confusion matrix, the boxplot of the predictions stopping times, the timestamps left per class, and the class probabitilies with respect to time will be saved in said folder. Moreover, the videos of training predictions will be saved in the `media` folder. 
+
+*Figure 1. Confusion Matrix*
+
+![Confusion Matrix](png/best_model_results/confusion_matrix_normalized.png)
+
+*Figure 2. Boxplot of the predictions stopping times*
+
+![Boxplot](png/best_model_results/boxplot_stopping_times.png)
+
+*Figure 3. Timestamps left per class*
+
+![Timestamps left per class](png/best_model_results/timestamps_left_per_class.png)
+
+*Figure 4. Class probabilities with respect to time*
+
+![Class probabilities with respect to time](png/best_model_results/class_probabilities_wrt_time_with_mus.png)
+
+
 ## 5. Notebooks
 In the `notebooks` folder, you can find several notebooks to reproduce the results of the paper.
 1. [`dataset_plot.ipynb`](notebooks/dataset_plot.ipynb) - explore the BreizhCrops and the Reduced BreizhCrops datasets;
