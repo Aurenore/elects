@@ -82,7 +82,7 @@ if __name__ == "__main__":
     parser.add_argument("--run-name", type=str, help="name of the wandb run to test")
     parser.add_argument("--sequencelength-test", type=int, help="sequence length of the test dataset", default=None)
     parser.add_argument("--plot-label-distribution", type=bool, help="if true, plot the label distribution", default=False)
-    parser.add_argument("--dataroot", type=str, help="local dataroot", default='os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")')
+    parser.add_argument("--dataroot", type=str, help='local dataroot. If default, then local dataroot will be set to os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")', default='default')
     parser.add_argument("--partition", type=str, help="partition to test on, should be 'train', 'valid', or 'eval'", default='eval')
     args = parser.parse_args()
     run_name = args.run_name
@@ -91,6 +91,8 @@ if __name__ == "__main__":
     partition=args.partition
     if args.dataroot == 'config':
         local_dataroot = 'config'
+    elif args.dataroot == 'default':
+        local_dataroot = os.path.join(os.environ.get("HOME", os.environ.get("USERPROFILE")),"elects_data")
     else:
         local_dataroot = args.dataroot
     main(run_name, sequencelength_test, plot_label_distribution, partition, local_dataroot=local_dataroot)

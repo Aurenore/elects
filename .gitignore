@@ -6,6 +6,8 @@ elects_environment
 *.pth
 *.csv
 *.png
+!png/best_model_results/*.png
+!png/*.png
 *.zip
 *.npy
 /wandb

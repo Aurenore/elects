@@ -53,7 +53,7 @@ python train.py --configpath <configpath>
 where `<configpath>` is the path to the model configuration file, in json format. An example is given in [`config/best_model_config.json`](config/best_model_config.json).
 The BreizhCrops dataset is automatically downloaded. 
 
-Medias will be shown in the wandb dashboard, as the distributions of the predictions stopping times, the class probabilities with respect to time, and the number of timestamps left to predict. 
+Medias will be shown in the wandb dashboard, as the distributions of the predictions stopping times, the class probabilities with respect to time, and the number of timestamps left to predict. Examples of these videos are available below.
 
 *Video 1. Distributions of the predictions stopping times*
 
@@ -104,7 +104,7 @@ python test.py --run-name <run-name>
 where `<run-name>` is the name of the wandb run you want to test. The test set is automatically downloaded.
 Several options are available with `python test.py --help`.
 
-The results of the test are saved in the `artifacts/<run_id>` folder. The confusion matrix, the boxplot of the predictions stopping times, the timestamps left per class, and the class probabitilies with respect to time will be saved in said folder. Moreover, the videos of training predictions will be saved in the `media` folder. 
+The results of the test are saved in the `artifacts/<run_id>` folder. Several plots will be saved, such as the normalized confusion matrix and the boxplot of the predictions stopping times. Moreover, the videos of training predictions will be saved in the `media` folder. 
 
 *Figure 1. Confusion Matrix*
 
@@ -113,14 +113,6 @@ The results of the test are saved in the `artifacts/<run_id>` folder. The confus
 *Figure 2. Boxplot of the predictions stopping times*
 
 ![Boxplot](png/best_model_results/boxplot_stopping_times.png)
-
-*Figure 3. Timestamps left per class*
-
-![Timestamps left per class](png/best_model_results/timestamps_left_per_class.png)
-
-*Figure 4. Class probabilities with respect to time*
-
-![Class probabilities with respect to time](png/best_model_results/class_probabilities_wrt_time_with_mus.png)
 
 
 ## 5. Notebooks
