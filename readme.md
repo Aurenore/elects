@@ -1,5 +1,5 @@
 # D-ELECTS - In Season Crop Classification using Satellite Imagery
-This repository contains the code of my master thesis project.  The report is available [here](Master_Thesis__In_Season_Crop_Classification_using_Satellite_Imagery%20.pdf).
+This repository contains the code of my master thesis project at ETH.  The report is available [here](Master_Thesis__In_Season_Crop_Classification_using_Satellite_Imagery%20.pdf).
 
 <img width="100%" src="png/input-output.drawio.png">
 
@@ -22,7 +22,7 @@ The Readme is structured as follows:
 ## 2. Dependencies 
 [TO COMPLETE]
 
-```
+```bash
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -46,14 +46,14 @@ project: <projectname>
 ```	
 
 ### Start training loop
-To start a training loop run
+To start training loops on the train set, run
 ```bash 
 python train.py --configpath <configpath>
 ```
 where `<configpath>` is the path to the model configuration file, in json format. An example is given in [`config/best_model_config.json`](config/best_model_config.json).
 The BreizhCrops dataset is automatically downloaded. 
 
-Medias will be shown in the wandb dashboard, as the distributions of the predictions stopping times, the class probabilities with respect to time, and the number of timestamps left to predict. Examples of these videos are available below.
+Medias will be shown in the wandb dashboard, as the distributions of the predictions stopping times, the class probabilities with respect to time, and the number of timestamps left to predict. Examples of their evolutions throughout the epochs are available below.
 
 *Video 1. Distributions of the predictions stopping times*
 
@@ -73,7 +73,7 @@ Two training variants are available in the [`training_variants`](training_varian
 
 #### 1. Sweep Train
 For hyperparameter optimization, you can use the [`train_sweep.py`](training_variants/train_sweep.py) script. To do so, first initialize a sweep with
-```
+```bash
 wandb sweep --project <projectname> <configpath>
 ```
 where `<configpath>` is the path to the sweep configuration file. An example of sweep configuration file is given in [`config/sweep_config.yaml`](config/sweep_config.yaml).
@@ -85,7 +85,7 @@ wandb agent <username>/<projectname>/<sweep_id>
 ```
 where `<sweep_id>` is the id of the sweep you initialized. You can follow the training process on the wandb dashboard.
 
-You can find the best model via the wandb dashboard, and download the configuration file from there. You can also find the best model by downloading the results locally and selecting the model according to your preferences. See the beginning of the notebook [`prediction_one_parcel.ipynb`](notebooks/prediction_one_parcel.ipynb)  for an example of how to do this.
+You can find the best model via the wandb dashboard, and download the configuration file from there. You can also find the best model by downloading the results locally and selecting the model according to your preferences. See the beginning of the notebook [`prediction_one_parcel.ipynb`](notebooks/prediction_one_parcel.ipynb)  for an example on how to load the results of a sweep. 
 
 Save the configuration file of the selected model in json format.
 
@@ -97,20 +97,20 @@ python training_variants/final_train.py --configpath <configpath>
 where `<configpath>` is the path to the selected model configuration file. An example is given in [`config/best_model_config.json`](config/best_model_config.json).
 
 ## 4. Test the Model
-To test the model on the test set run
-```
+To test the model on the test set, run
+```bash
 python test.py --run-name <run-name>
 ```
 where `<run-name>` is the name of the wandb run you want to test. The test set is automatically downloaded.
 Several options are available with `python test.py --help`.
 
-The results of the test are saved in the `artifacts/<run_id>` folder. Several plots will be saved, such as the normalized confusion matrix and the boxplot of the predictions stopping times. Moreover, the videos of training predictions will be saved in the `media` folder. 
+The results of the test are locally saved in the `artifacts/<run_id>` folder. Several plots will be created, such as the normalized confusion matrix and the boxplots of the predictions stopping times. Moreover, the videos of training predictions will be saved in the `media` folder. 
 
 *Figure 1. Confusion Matrix*
 
 ![Confusion Matrix](png/best_model_results/confusion_matrix_normalized.png)
 
-*Figure 2. Boxplot of the predictions stopping times*
+*Figure 2. Boxplots of the predictions stopping times*
 
 ![Boxplot](png/best_model_results/boxplot_stopping_times.png)
 
