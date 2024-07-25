@@ -17,3 +17,4 @@ EDA/wandb
 *.json
 *.pkl
 *.mp4
+*.yaml
