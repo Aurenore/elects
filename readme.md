@@ -3,15 +3,16 @@ This repository contains the code of my master thesis project at ETH.  The repor
 
 <img width="100%" src="png/input-output.drawio.png">
 
-The Readme is structured as follows:
+**Table of Contents**
 - [D-ELECTS - In Season Crop Classification using Satellite Imagery](#d-elects---in-season-crop-classification-using-satellite-imagery)
   - [1. Abstract](#1-abstract)
   - [2. Dependencies](#2-dependencies)
   - [3. Train the Model](#3-train-the-model)
-    - [Monitor training](#monitor-training)
-    - [Other training variants (optional)](#other-training-variants-optional)
-      - [1. Sweep Train](#1-sweep-train)
-      - [2. Final Train](#2-final-train)
+    - [3.1 Monitor training](#31-monitor-training)
+    - [3.2 Start training loop](#32-start-training-loop)
+    - [3.3 Other training variants (optional)](#33-other-training-variants-optional)
+      - [3.3.1 Sweep Train](#331-sweep-train)
+      - [3.3.2 Final Train](#332-final-train)
   - [4. Test the Model](#4-test-the-model)
   - [5. Notebooks](#5-notebooks)
   - [6. References](#6-references)
@@ -31,7 +32,7 @@ pip install -r requirements.txt
 
 ## 3. Train the Model
 
-### Monitor training 
+### 3.1 Monitor training 
 Create an account on [wandb](https://wandb.ai) and login to your account in the terminal
 ```bash
 wandb login
@@ -45,7 +46,7 @@ entity: <username>
 project: <projectname>
 ```	
 
-### Start training loop
+### 3.2 Start training loop
 To start training loops on the train set, run
 ```bash 
 python train.py --configpath <configpath>
@@ -68,10 +69,10 @@ https://github.com/user-attachments/assets/f281ae29-c754-4b24-a6bf-b038c949dca6
 https://github.com/user-attachments/assets/e843d8fa-13d6-4356-9123-1b9f74d8aa91
 
 
-### Other training variants (optional)
+### 3.3 Other training variants (optional)
 Two training variants are available in the [`training_variants`](training_variants) folder. They aim to optimize the hyperparameters of the model and to train the model on the training and validation sets.
 
-#### 1. Sweep Train
+#### 3.3.1. Sweep Train
 For hyperparameter optimization, you can use the [`train_sweep.py`](training_variants/train_sweep.py) script. To do so, first initialize a sweep with
 ```bash
 wandb sweep --project <projectname> <configpath>
@@ -89,7 +90,7 @@ You can find the best model via the wandb dashboard, and download the configurat
 
 Save the configuration file of the selected model in json format.
 
-#### 2. Final Train
+#### 3.3.2. Final Train
 Once the best configuration of hyperparameters is found, you can train the model on both the training and the validation sets with the [`final_train.py`](training_variants/final_train.py) script. To do so, run
 ```bash 
 python training_variants/final_train.py --configpath <configpath>
