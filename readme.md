@@ -1,5 +1,7 @@
 # D-ELECTS - In Season Crop Classification using Satellite Imagery
-This repository contains the code of my master thesis project at ETH.  The report is available [here](Master_Thesis__In_Season_Crop_Classification_using_Satellite_Imagery%20.pdf).
+This repository contains the source code of my master thesis project at ETH. We proposed an innovative early crop classification model named D-ELECTS, which is based on the ELECTS model.
+
+*Figure 1. Diagram of the D-ELECTS model workflow. The input is the average Sentinel-2 reflectance aggregated by parcel, with 13 spectral bands. The model processes incrementally the multivariate time series. It outputs the probability distribution across the crop types (displayed in the top right) and the number of timestamps left until the model stops predicting (shown at the bottom right). The model continues to intake more data points as long as the timestamps left are above zero. The D-ELECTS model predicts the class temporary meadows at a stopping time of 145, indicated as a vertical black line*
 
 <img width="100%" src="png/input-output.drawio.png">
 
@@ -18,10 +20,24 @@ This repository contains the code of my master thesis project at ETH.  The repor
   - [6. References](#6-references)
 
 ## 1. Abstract
-[TO COMPLETE]
+Crop classification is a crucial task that can be hugely simplified by remote sensing data, as it is the gateway
+technology for a more effective and sustainable supervision of arable land. For most applications, such as
+fertilization and water consumption, crop type classification need to be given in real-time, as early as possible
+during the growing season. Rußwurm et al. proposed End-to-end Learned Early Classification of Time
+Series (ELECTS) as an early crop classification model. Based on their work, our study aims to trade between
+accuracy and earliness. Using their model as benchmark, our goal is to reach even earlier predictions, as well
+as to align the variability of our model’s predictions with the variability expected from phenology.
+To do so, we develop the Daily ELECTS (D-ELECTS) model, which estimates a classification score and a
+number of timestamps left until the prediction is finalized. Our model mainly relies on the structure of satellite
+time series data; each timestamp of the time series correspond to one day. The D-ELECTS cost function
+optimizes the classification accuracy, the prediction earliness and the amount of timestamps left through the
+time series length.
+Our experiments show that D-ELECTS results in earlier predictions than ELECTS, while maintaining
+a reasonable accuracy for most practical purposes. Our work suggests the great potential of earlier and
+more concentrated predictions, aligned with phenological variability. Additionally, it offers a countdown
+before final classification, which is useful for practical applications.
 
 ## 2. Dependencies 
-[TO COMPLETE]
 
 ```bash
 python -m venv venv
@@ -107,11 +123,11 @@ Several options are available with `python test.py --help`.
 
 The results of the test are locally saved in the `artifacts/<run_id>` folder. Several plots will be created, such as the normalized confusion matrix and the boxplots of the predictions stopping times. Moreover, the videos of training predictions will be saved in the `media` folder. 
 
-*Figure 1. Confusion Matrix*
+*Figure 2. Confusion Matrix*
 
 ![Confusion Matrix](png/best_model_results/confusion_matrix_normalized.png)
 
-*Figure 2. Boxplots of the predictions stopping times*
+*Figure 3. Boxplots of the predictions stopping times*
 
 ![Boxplot](png/best_model_results/boxplot_stopping_times.png)
 
