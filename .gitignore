@@ -5,8 +5,9 @@ elects_data
 elects_environment
 *.pth
 *.csv
-*.pdf
 *.png
+!png/best_model_results/*.png
+!png/*.png
 *.zip
 *.npy
 /wandb
@@ -15,5 +16,5 @@ EDA/wandb
 /venv
 *.json
 *.pkl
-*.yaml
 *.mp4
+*.yaml

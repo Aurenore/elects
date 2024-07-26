@@ -1,0 +1,93 @@
+program: training_variants/train_sweep.py
+method: random
+name: final_experience
+metric:
+  goal: maximize
+  name: harmonic_mean
+parameters:
+  backbonemodel:
+    value: LSTM
+  dataset:
+    value: breizhcrops
+  epsilon:
+    value: 10
+  learning_rate:
+    value: 0.001
+  weight_decay:
+    value: 0
+  patience:
+    value: 30
+  device:
+    value: "cuda"
+  epochs:
+    values: 
+      - 100
+      - 200
+  hidden_dims:
+    values: 
+      - 16
+      - 32
+      - 64
+      - 128
+  batchsize:
+    values: 
+      - 128
+      - 256
+      - 512
+  dataroot:
+    value: elects_data
+  snapshot:
+    value: snapshot.pth
+  sequencelength:
+    value: 365
+  loss: 
+    value: "daily_reward_piecewise_lin_regr"
+  decision_head: 
+    value: "day"
+  loss_weight:
+    value: "balanced"
+  resume:
+    value: false
+  validation_set:
+    value: valid
+  corrected: 
+    value: true
+  daily_timestamps: 
+    value: true
+  original_time_serie_lengths: 
+    value: 
+      - 102
+  alpha: 
+    value: 1.
+  factor: 
+    values: 
+      - "v1"
+      - "v2"
+  day_head_init_bias: 
+    values: 
+      - null
+      - 1
+      - 5
+  alpha_decay: 
+    values: 
+      - [1., 0.4]
+      - [1., 0.5]
+      - [1., 0.6]
+      - [1., 0.7]
+      - [1., 0.8]
+      - [1., 0.9]
+  start_decision_head_training: 
+    values: 
+      - 2
+      - 10
+      - 20
+      - 40
+  mu: 
+    value: 150.
+  p_thresh:
+    values: 
+      - 0.5
+      - 0.6
+      - 0.7
+      - 0.8
+      - 0.9

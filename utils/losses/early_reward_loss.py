@@ -2,7 +2,10 @@ import torch
 from torch import nn
 from utils.losses.loss_helpers import probability_correct_class
 
+
 class EarlyRewardLoss(nn.Module):
+    """ELECTS loss function"""
+
     def __init__(self, alpha=0.5, epsilon=10, weight=None):
         super(EarlyRewardLoss, self).__init__()
 
@@ -10,7 +13,14 @@ class EarlyRewardLoss(nn.Module):
         self.alpha = alpha
         self.epsilon = epsilon
 
-    def forward(self, log_class_probabilities, probability_stopping, y_true, return_stats=False, **kwargs):
+    def forward(
+        self,
+        log_class_probabilities,
+        probability_stopping,
+        y_true,
+        return_stats=False,
+        **kwargs
+    ):
         N, T, C = log_class_probabilities.shape
 
         # equation 3
@@ -20,28 +30,36 @@ class EarlyRewardLoss(nn.Module):
         Pt = Pt + self.epsilon / T
 
         # equation 4, right term
-        t = torch.ones(N, T, device=log_class_probabilities.device) * \
-                torch.arange(T).type(torch.FloatTensor).to(log_class_probabilities.device)
+        t = torch.ones(N, T, device=log_class_probabilities.device) * torch.arange(
+            T
+        ).type(torch.FloatTensor).to(log_class_probabilities.device)
 
-        earliness_reward = Pt * probability_correct_class(log_class_probabilities, y_true) * (1 - t / T)
+        earliness_reward = (
+            Pt
+            * probability_correct_class(log_class_probabilities, y_true)
+            * (1 - t / T)
+        )
         earliness_reward = earliness_reward.sum(1).mean(0)
 
         # equation 4 left term
-        cross_entropy = self.negative_log_likelihood(log_class_probabilities.view(N*T,C), y_true.view(N*T)).view(N,T)
+        cross_entropy = self.negative_log_likelihood(
+            log_class_probabilities.view(N * T, C), y_true.view(N * T)
+        ).view(N, T)
         classification_loss = (cross_entropy * Pt).sum(1).mean(0)
 
         # equation 4
-        loss = self.alpha * classification_loss - (1-self.alpha) * earliness_reward
+        loss = self.alpha * classification_loss - (1 - self.alpha) * earliness_reward
 
         if return_stats:
             stats = dict(
                 classification_loss=classification_loss.cpu().detach().numpy(),
                 earliness_reward=earliness_reward.cpu().detach().numpy(),
-                probability_making_decision=Pt.cpu().detach().numpy()
+                probability_making_decision=Pt.cpu().detach().numpy(),
             )
             return loss, stats
         else:
             return loss
+
 
 def calculate_probability_making_decision(deltas):
     """
