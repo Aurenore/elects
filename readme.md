@@ -1,7 +1,7 @@
 # D-ELECTS - In Season Crop Classification using Satellite Imagery
 This repository contains the source code of my master thesis project at ETH. We proposed an innovative early crop classification model named D-ELECTS, which is based on the ELECTS model.
 
-*Figure 1. Diagram of the D-ELECTS model workflow. The input is the average Sentinel-2 reflectance aggregated by parcel, with 13 spectral bands. The model processes incrementally the multivariate time series. It outputs the probability distribution across the crop types (displayed in the top right) and the number of timestamps left until the model stops predicting (shown at the bottom right). The model continues to intake more data points as long as the timestamps left are above zero. The D-ELECTS model predicts the class temporary meadows at a stopping time of 145, indicated as a vertical black line*
+*Figure 1. Diagram of the D-ELECTS model workflow. The input is the average Sentinel-2 reflectance aggregated by parcel, with 13 spectral bands. The model processes incrementally the multivariate time series. It outputs the probability distribution across the crop types (displayed in the top right) and the time period until the model stops predicting (shown at the bottom right). The model continues to intake more data points as long as the time until final prediction is above zero. In this specific example, the D-ELECTS model predicts the class temporary meadows at a stopping time of 145, indicated as a vertical black line*
 
 <img width="100%" src="png/input-output.drawio.png">
 
@@ -27,15 +27,15 @@ during the growing season. Rußwurm et al. proposed End-to-end Learned Early Cla
 Series (ELECTS) as an early crop classification model. Based on their work, our study aims to trade between
 accuracy and earliness. Using their model as benchmark, our goal is to reach even earlier predictions, as well
 as to align the variability of our model’s predictions with the variability expected from phenology.
-To do so, we develop the Daily ELECTS (D-ELECTS) model, which estimates a classification score and a
-number of timestamps left until the prediction is finalized. Our model mainly relies on the structure of satellite
-time series data; each timestamp of the time series correspond to one day. The D-ELECTS cost function
-optimizes the classification accuracy, the prediction earliness and the amount of timestamps left through the
-time series length.
+To do so, we develop the Daily ELECTS (D-ELECTS) model, which estimates a classification score and
+a time period until final prediction. Our model mainly relies on the structure of satellite time series data; each
+timestamp of the time series correspond to one day. The D-ELECTS cost function optimizes the classification
+accuracy, the prediction earliness and the time period until final prediction.
 Our experiments show that D-ELECTS results in earlier predictions than ELECTS, while maintaining
 a reasonable accuracy for most practical purposes. Our work suggests the great potential of earlier and
 more concentrated predictions, aligned with phenological variability. Additionally, it offers a countdown
-before final classification, which is useful for practical applications.
+before final classification, which is useful for practical applications. 
+
 
 ## 2. Dependencies 
 
@@ -70,7 +70,7 @@ python train.py --configpath <configpath>
 where `<configpath>` is the path to the model configuration file, in json format. An example is given in [`config/best_model_config.json`](config/best_model_config.json).
 The BreizhCrops dataset is automatically downloaded. 
 
-Medias will be shown in the wandb dashboard, as the distributions of the predictions stopping times, the class probabilities with respect to time, and the number of timestamps left to predict. Examples of their evolutions throughout the epochs are available below.
+Medias will be shown in the wandb dashboard, as the distributions of the predictions stopping times, the class probabilities with respect to time, and the time until final prediction. Examples of their evolutions throughout the epochs are available below.
 
 *Video 1. Distributions of the predictions stopping times*
 
@@ -80,7 +80,7 @@ https://github.com/user-attachments/assets/c5474bed-3f3c-4829-85be-cb2ae25b0e75
 
 https://github.com/user-attachments/assets/f281ae29-c754-4b24-a6bf-b038c949dca6
 
-*Video 3. Timestamps left until the final prediction*
+*Video 3. Time until final prediction*
 
 https://github.com/user-attachments/assets/e843d8fa-13d6-4356-9123-1b9f74d8aa91
 
